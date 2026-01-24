@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { 
   ConsultaStatus, 
@@ -11,43 +12,51 @@ import {
   estadoColors,
 } from '@/types/database';
 
-interface StatusBadgeProps {
+interface StatusBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   status: ConsultaStatus;
-  className?: string;
 }
 
-interface OrigemBadgeProps {
+interface OrigemBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   origem: ConsultaOrigem;
-  className?: string;
 }
 
-interface EstadoBadgeProps {
+interface EstadoBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   estado: EstadoRegisto;
-  className?: string;
 }
 
 const badgeBase = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border";
 
-export function StatusBadge({ status, className }: StatusBadgeProps) {
-  return (
-    <span className={cn(badgeBase, statusColors[status], className)}>
-      {statusLabels[status]}
-    </span>
-  );
-}
+const StatusBadge = React.forwardRef<HTMLSpanElement, StatusBadgeProps>(
+  ({ status, className, ...props }, ref) => {
+    return (
+      <span ref={ref} className={cn(badgeBase, statusColors[status], className)} {...props}>
+        {statusLabels[status]}
+      </span>
+    );
+  }
+);
+StatusBadge.displayName = 'StatusBadge';
 
-export function OrigemBadge({ origem, className }: OrigemBadgeProps) {
-  return (
-    <span className={cn(badgeBase, origemColors[origem], className)}>
-      {origemLabels[origem]}
-    </span>
-  );
-}
+const OrigemBadge = React.forwardRef<HTMLSpanElement, OrigemBadgeProps>(
+  ({ origem, className, ...props }, ref) => {
+    return (
+      <span ref={ref} className={cn(badgeBase, origemColors[origem], className)} {...props}>
+        {origemLabels[origem]}
+      </span>
+    );
+  }
+);
+OrigemBadge.displayName = 'OrigemBadge';
 
-export function EstadoBadge({ estado, className }: EstadoBadgeProps) {
-  return (
-    <span className={cn(badgeBase, estadoColors[estado], className)}>
-      {estadoLabels[estado]}
-    </span>
-  );
-}
+const EstadoBadge = React.forwardRef<HTMLSpanElement, EstadoBadgeProps>(
+  ({ estado, className, ...props }, ref) => {
+    return (
+      <span ref={ref} className={cn(badgeBase, estadoColors[estado], className)} {...props}>
+        {estadoLabels[estado]}
+      </span>
+    );
+  }
+);
+EstadoBadge.displayName = 'EstadoBadge';
+
+export { StatusBadge, OrigemBadge, EstadoBadge };
