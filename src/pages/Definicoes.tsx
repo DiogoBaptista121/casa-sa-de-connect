@@ -1,40 +1,50 @@
 import { PageHeader } from '@/components/ui/page-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/contexts/AuthContext';
-import { Users, Shield, Bell } from 'lucide-react';
+import { Settings, Users, Shield, Bell } from 'lucide-react';
+import { GeneralSettingsTab } from '@/components/definicoes/GeneralSettingsTab';
+import { UsersTab } from '@/components/definicoes/UsersTab';
+import { SecurityTab } from '@/components/definicoes/SecurityTab';
+import { NotificationsTab } from '@/components/definicoes/NotificationsTab';
 
 export default function DefinicoesPage() {
-  const { profile, role } = useAuth();
-
   return (
     <div className="page-enter space-y-6">
-      <PageHeader title="Definições" description="Configurações do sistema" />
+      <PageHeader title="Definições" description="Configurações do sistema e da sua conta" />
 
-      <Tabs defaultValue="seguranca" className="w-full">
-        <TabsList>
-          <TabsTrigger value="utilizadores" className="gap-2"><Users className="w-4 h-4" />Utilizadores</TabsTrigger>
-          <TabsTrigger value="seguranca" className="gap-2"><Shield className="w-4 h-4" />Segurança</TabsTrigger>
-          <TabsTrigger value="notificacoes" className="gap-2"><Bell className="w-4 h-4" />Notificações</TabsTrigger>
+      <Tabs defaultValue="geral" className="w-full">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
+          <TabsTrigger value="geral" className="gap-2">
+            <Settings className="h-4 w-4" />
+            <span className="hidden sm:inline">Geral</span>
+          </TabsTrigger>
+          <TabsTrigger value="utilizadores" className="gap-2">
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">Utilizadores</span>
+          </TabsTrigger>
+          <TabsTrigger value="seguranca" className="gap-2">
+            <Shield className="h-4 w-4" />
+            <span className="hidden sm:inline">Segurança</span>
+          </TabsTrigger>
+          <TabsTrigger value="notificacoes" className="gap-2">
+            <Bell className="h-4 w-4" />
+            <span className="hidden sm:inline">Notificações</span>
+          </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="geral" className="mt-6">
+          <GeneralSettingsTab />
+        </TabsContent>
+
         <TabsContent value="utilizadores" className="mt-6">
-          <Card className="card-elevated"><CardContent className="py-12 text-center text-muted-foreground">Gestão de utilizadores em desenvolvimento</CardContent></Card>
+          <UsersTab />
         </TabsContent>
 
         <TabsContent value="seguranca" className="mt-6">
-          <Card className="card-elevated">
-            <CardHeader><CardTitle>Sessão Atual</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <p><strong>Nome:</strong> {profile?.nome || '-'}</p>
-              <p><strong>Email:</strong> {profile?.email || '-'}</p>
-              <p><strong>Role:</strong> {role || '-'}</p>
-            </CardContent>
-          </Card>
+          <SecurityTab />
         </TabsContent>
 
         <TabsContent value="notificacoes" className="mt-6">
-          <Card className="card-elevated"><CardContent className="py-12 text-center text-muted-foreground">Configurações de notificações em desenvolvimento</CardContent></Card>
+          <NotificationsTab />
         </TabsContent>
       </Tabs>
     </div>
