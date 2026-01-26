@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -16,6 +15,8 @@ interface CalendarFiltersProps {
   setServicoFilter: (value: string) => void;
   tipoFilter: string;
   setTipoFilter: (value: string) => void;
+  unidadeFilter: string;
+  setUnidadeFilter: (value: string) => void;
   statusFilter: string;
   setStatusFilter: (value: string) => void;
   onToday: () => void;
@@ -29,6 +30,8 @@ export function CalendarFilters({
   setServicoFilter,
   tipoFilter,
   setTipoFilter,
+  unidadeFilter,
+  setUnidadeFilter,
   statusFilter,
   setStatusFilter,
   onToday,
@@ -55,10 +58,20 @@ export function CalendarFilters({
             <SelectValue placeholder="Tipo" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="todos">Todos</SelectItem>
+            <SelectItem value="todos">Todos os Tipos</SelectItem>
+            <SelectItem value="consulta">Consultas</SelectItem>
+            <SelectItem value="medicina_trabalho">Medicina do Trabalho</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={unidadeFilter} onValueChange={setUnidadeFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Unidade" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todas Unidades</SelectItem>
             <SelectItem value="casa_saude">Casa de Saúde</SelectItem>
             <SelectItem value="unidade_movel">Unidade Móvel</SelectItem>
-            <SelectItem value="medicina_trabalho">Medicina do Trabalho</SelectItem>
           </SelectContent>
         </Select>
 
@@ -73,6 +86,7 @@ export function CalendarFilters({
             <SelectItem value="concluida">Concluída</SelectItem>
             <SelectItem value="cancelada">Cancelada</SelectItem>
             <SelectItem value="falta">Falta</SelectItem>
+            <SelectItem value="remarcada">Remarcada</SelectItem>
           </SelectContent>
         </Select>
       </div>

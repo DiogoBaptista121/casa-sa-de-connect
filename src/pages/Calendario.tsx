@@ -9,29 +9,14 @@ import { DayView } from '@/components/calendario/DayView';
 import { WeekView } from '@/components/calendario/WeekView';
 import { MonthView } from '@/components/calendario/MonthView';
 import { YearView } from '@/components/calendario/YearView';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { StatusBadge, OrigemBadge } from '@/components/ui/status-badge';
-import { toast } from 'sonner';
-import { Loader2, Calendar, Briefcase } from 'lucide-react';
-import { format } from 'date-fns';
-import { pt } from 'date-fns/locale';
-import type { Consulta, ConsultaMT, Servico, ConsultaStatus, ConsultaOrigem } from '@/types/database';
+import { AppointmentModal } from '@/components/calendario/AppointmentModal';
+import { Loader2 } from 'lucide-react';
+import type { Consulta, ConsultaMT, Servico, ConsultaOrigem, ConsultaStatus } from '@/types/database';
+
+const origemLabels: Record<ConsultaOrigem, string> = {
+  casa_saude: 'Casa de Saúde',
+  unidade_movel: 'Unidade Móvel',
+};
 
 export default function CalendarioPage() {
   const { canEdit } = useAuth();
@@ -47,12 +32,12 @@ export default function CalendarioPage() {
   // Filters
   const [servicoFilter, setServicoFilter] = useState('todos');
   const [tipoFilter, setTipoFilter] = useState('todos');
+  const [unidadeFilter, setUnidadeFilter] = useState('todos');
   const [statusFilter, setStatusFilter] = useState('todos');
 
-  // Event modal
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEventData | null>(null);
-  const [editStatus, setEditStatus] = useState<ConsultaStatus>('agendada');
-  const [saving, setSaving] = useState(false);
+  // Modal
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState<any>(null);
 
   useEffect(() => {
     fetchData();
@@ -106,9 +91,10 @@ export default function CalendarioPage() {
     const allEvents: CalendarEventData[] = [];
 
     // Consultas Casa de Saúde
-    if (tipoFilter === 'todos' || tipoFilter === 'casa_saude' || tipoFilter === 'unidade_movel') {
+    if (tipoFilter === 'todos' || tipoFilter === 'consulta') {
       consultas.forEach((c) => {
-        if (tipoFilter !== 'todos' && c.origem !== tipoFilter) return;
+        // Filter by unidade (origem)
+        if (unidadeFilter !== 'todos' && c.origem !== unidadeFilter) return;
         if (servicoFilter !== 'todos' && c.servico_id !== servicoFilter) return;
         if (statusFilter !== 'todos' && c.status !== statusFilter) return;
 
@@ -125,6 +111,8 @@ export default function CalendarioPage() {
           color: servico?.cor,
           isMT: false,
           type: 'consulta',
+          origem: c.origem,
+          origemLabel: origemLabels[c.origem] || 'Casa de Saúde',
         });
       });
     }
@@ -139,13 +127,14 @@ export default function CalendarioPage() {
         allEvents.push({
           id: c.id,
           title: funcionario?.nome || 'Funcionário',
-          subtitle: `MT - ${c.tipo_exame || 'Exame'}`,
+          subtitle: c.tipo_exame || 'Exame',
           date: c.data,
           time: c.hora?.substring(0, 5) || '00:00',
           status: c.status,
           color: '#f59e0b',
           isMT: true,
           type: 'consulta_mt',
+          origemLabel: 'Medicina do Trabalho',
         });
       });
     }
@@ -154,32 +143,46 @@ export default function CalendarioPage() {
       if (a.date !== b.date) return a.date.localeCompare(b.date);
       return a.time.localeCompare(b.time);
     });
-  }, [consultas, consultasMT, servicoFilter, tipoFilter, statusFilter]);
+  }, [consultas, consultasMT, servicoFilter, tipoFilter, unidadeFilter, statusFilter]);
 
   const handleEventClick = (event: CalendarEventData) => {
-    setSelectedEvent(event);
-    setEditStatus(event.status);
+    // Find the original data to edit
+    if (event.type === 'consulta') {
+      const consulta = consultas.find((c) => c.id === event.id);
+      if (consulta) {
+        setEditingAppointment({
+          id: consulta.id,
+          type: 'consulta' as const,
+          cartao_saude_id: consulta.cartao_saude_id,
+          servico_id: consulta.servico_id,
+          origem: consulta.origem,
+          data: consulta.data,
+          hora: consulta.hora?.substring(0, 5) || '09:00',
+          status: consulta.status,
+          notas: consulta.notas || '',
+        });
+      }
+    } else {
+      const consultaMT = consultasMT.find((c) => c.id === event.id);
+      if (consultaMT) {
+        setEditingAppointment({
+          id: consultaMT.id,
+          type: 'consulta_mt' as const,
+          funcionario_id: consultaMT.funcionario_id,
+          tipo_exame: consultaMT.tipo_exame || 'Periódico',
+          data: consultaMT.data,
+          hora: consultaMT.hora?.substring(0, 5) || '09:00',
+          status: consultaMT.status,
+          notas: consultaMT.notas || '',
+        });
+      }
+    }
+    setModalOpen(true);
   };
 
-  const handleUpdateStatus = async () => {
-    if (!selectedEvent) return;
-    setSaving(true);
-
-    const table = selectedEvent.type === 'consulta' ? 'consultas' : 'consultas_mt';
-    const { error } = await supabase
-      .from(table)
-      .update({ status: editStatus })
-      .eq('id', selectedEvent.id);
-
-    if (error) {
-      console.error('Error updating status:', error);
-      toast.error('Erro ao atualizar status');
-    } else {
-      toast.success('Status atualizado');
-      setSelectedEvent(null);
-      fetchData();
-    }
-    setSaving(false);
+  const handleNewAppointment = () => {
+    setEditingAppointment(null);
+    setModalOpen(true);
   };
 
   const handleToday = () => {
@@ -218,10 +221,12 @@ export default function CalendarioPage() {
         setServicoFilter={setServicoFilter}
         tipoFilter={tipoFilter}
         setTipoFilter={setTipoFilter}
+        unidadeFilter={unidadeFilter}
+        setUnidadeFilter={setUnidadeFilter}
         statusFilter={statusFilter}
         setStatusFilter={setStatusFilter}
         onToday={handleToday}
-        onNewConsulta={() => window.location.href = '/consultas'}
+        onNewConsulta={handleNewAppointment}
         canEdit={canEdit}
       />
 
@@ -245,93 +250,14 @@ export default function CalendarioPage() {
         <YearView date={currentDate} events={events} onMonthClick={handleMonthClick} />
       )}
 
-      {/* Event Detail Modal */}
-      <Dialog open={!!selectedEvent} onOpenChange={(open) => !open && setSelectedEvent(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {selectedEvent?.isMT ? (
-                <Briefcase className="w-5 h-5 text-amber-500" />
-              ) : (
-                <Calendar className="w-5 h-5 text-primary" />
-              )}
-              {selectedEvent?.isMT ? 'Consulta MT' : 'Consulta'}
-            </DialogTitle>
-            <DialogDescription>
-              Detalhes da consulta agendada
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedEvent && (
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Data</Label>
-                  <p className="font-medium">
-                    {format(new Date(selectedEvent.date), "dd 'de' MMMM, yyyy", { locale: pt })}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Hora</Label>
-                  <p className="font-medium">{selectedEvent.time}</p>
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-muted-foreground">
-                  {selectedEvent.isMT ? 'Funcionário' : 'Paciente'}
-                </Label>
-                <p className="font-medium">{selectedEvent.title}</p>
-              </div>
-
-              <div>
-                <Label className="text-muted-foreground">
-                  {selectedEvent.isMT ? 'Tipo de Exame' : 'Serviço'}
-                </Label>
-                <p className="font-medium">{selectedEvent.subtitle}</p>
-              </div>
-
-              <div>
-                <Label className="text-muted-foreground">Status Atual</Label>
-                <div className="mt-1">
-                  <StatusBadge status={selectedEvent.status} />
-                </div>
-              </div>
-
-              {canEdit && (
-                <div className="space-y-2">
-                  <Label>Alterar Status</Label>
-                  <Select value={editStatus} onValueChange={(v) => setEditStatus(v as ConsultaStatus)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="agendada">Agendada</SelectItem>
-                      <SelectItem value="confirmada">Confirmada</SelectItem>
-                      <SelectItem value="concluida">Concluída</SelectItem>
-                      <SelectItem value="cancelada">Cancelada</SelectItem>
-                      <SelectItem value="falta">Falta</SelectItem>
-                      <SelectItem value="remarcada">Remarcada</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedEvent(null)}>
-              Fechar
-            </Button>
-            {canEdit && (
-              <Button onClick={handleUpdateStatus} disabled={saving}>
-                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Guardar
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Appointment Modal for Create/Edit */}
+      <AppointmentModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        initialData={editingAppointment}
+        initialDate={currentDate}
+        onSuccess={fetchData}
+      />
     </div>
   );
 }
