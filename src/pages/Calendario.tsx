@@ -117,26 +117,30 @@ export default function CalendarioPage() {
       });
     }
 
-    // Consultas Medicina do Trabalho
+    // Consultas Medicina do Trabalho - sempre associadas à Casa de Saúde
     if (tipoFilter === 'todos' || tipoFilter === 'medicina_trabalho') {
-      consultasMT.forEach((c) => {
-        if (statusFilter !== 'todos' && c.status !== statusFilter) return;
+      // MT está sempre associado a Casa de Saúde, então excluir quando filtro é Unidade Móvel
+      if (unidadeFilter !== 'unidade_movel') {
+        consultasMT.forEach((c) => {
+          if (statusFilter !== 'todos' && c.status !== statusFilter) return;
 
-        const funcionario = c.funcionario as any;
+          const funcionario = c.funcionario as any;
 
-        allEvents.push({
-          id: c.id,
-          title: funcionario?.nome || 'Funcionário',
-          subtitle: c.tipo_exame || 'Exame',
-          date: c.data,
-          time: c.hora?.substring(0, 5) || '00:00',
-          status: c.status,
-          color: '#f59e0b',
-          isMT: true,
-          type: 'consulta_mt',
-          origemLabel: 'Medicina do Trabalho',
+          allEvents.push({
+            id: c.id,
+            title: funcionario?.nome || 'Funcionário',
+            subtitle: c.tipo_exame || 'Exame',
+            date: c.data,
+            time: c.hora?.substring(0, 5) || '00:00',
+            status: c.status,
+            color: '#f59e0b',
+            isMT: true,
+            type: 'consulta_mt',
+            origem: 'casa_saude' as ConsultaOrigem,
+            origemLabel: 'Casa de Saúde • MT',
+          });
         });
-      });
+      }
     }
 
     return allEvents.sort((a, b) => {
