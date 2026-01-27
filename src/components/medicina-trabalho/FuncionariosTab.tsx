@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSuperAdmin } from '@/hooks/use-super-admin';
 import { DataTable, Column } from '@/components/ui/data-table';
 import { EstadoBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog';
 import {
   Dialog,
   DialogContent,
@@ -29,7 +31,8 @@ import {
   FileUp, 
   Edit2, 
   Loader2,
-  Users
+  Users,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { FuncionarioMT, EstadoRegisto } from '@/types/database';
@@ -37,6 +40,7 @@ import * as XLSX from 'xlsx';
 
 export function FuncionariosTab() {
   const { canEdit } = useAuth();
+  const { isSuperAdmin } = useSuperAdmin();
   const [loading, setLoading] = useState(true);
   const [funcionarios, setFuncionarios] = useState<FuncionarioMT[]>([]);
   const [filteredFuncionarios, setFilteredFuncionarios] = useState<FuncionarioMT[]>([]);
@@ -47,6 +51,11 @@ export function FuncionariosTab() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingFuncionario, setEditingFuncionario] = useState<FuncionarioMT | null>(null);
   const [saving, setSaving] = useState(false);
+  
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingFuncionario, setDeletingFuncionario] = useState<FuncionarioMT | null>(null);
+  const [deleting, setDeleting] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -201,6 +210,32 @@ export function FuncionariosTab() {
     setSaving(false);
   };
 
+  const openDeleteDialog = (funcionario: FuncionarioMT) => {
+    setDeletingFuncionario(funcionario);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingFuncionario) return;
+    
+    setDeleting(true);
+    const { error } = await supabase
+      .from('funcionarios_mt')
+      .delete()
+      .eq('id', deletingFuncionario.id);
+
+    if (error) {
+      console.error('Error deleting funcionario:', error);
+      toast.error('Erro ao eliminar funcionário');
+    } else {
+      toast.success('Funcionário eliminado com sucesso');
+      setDeleteDialogOpen(false);
+      setDeletingFuncionario(null);
+      fetchFuncionarios();
+    }
+    setDeleting(false);
+  };
+
   const handleExport = () => {
     const exportData = filteredFuncionarios.map((f) => ({
       'Número Funcionário': f.numero_funcionario,
@@ -318,20 +353,36 @@ export function FuncionariosTab() {
     {
       key: 'actions',
       header: '',
-      cell: (item) =>
-        canEdit && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              openEditModal(item);
-            }}
-          >
-            <Edit2 className="w-4 h-4" />
-          </Button>
-        ),
-      className: 'w-10',
+      cell: (item) => (
+        <div className="flex items-center gap-1">
+          {canEdit && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                openEditModal(item);
+              }}
+            >
+              <Edit2 className="w-4 h-4" />
+            </Button>
+          )}
+          {isSuperAdmin && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-destructive hover:text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                openDeleteDialog(item);
+              }}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      ),
+      className: 'w-20',
     },
   ];
 
@@ -529,6 +580,16 @@ export function FuncionariosTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title="Eliminar Funcionário"
+        description={`Tem a certeza que deseja eliminar o funcionário "${deletingFuncionario?.nome}"? Esta ação não pode ser desfeita e irá remover todas as consultas MT associadas.`}
+      />
     </div>
   );
 }

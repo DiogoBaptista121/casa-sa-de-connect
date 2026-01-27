@@ -7,10 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserPlus, Users, Shield, Search } from 'lucide-react';
+import { useSuperAdmin } from '@/hooks/use-super-admin';
+import { UserPlus, Users, Shield, Search, Trash2 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import type { AppRole } from '@/types/database';
 
@@ -35,7 +37,8 @@ const roleColors: Record<AppRole, string> = {
 };
 
 export function UsersTab() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user: currentUser } = useAuth();
+  const { isSuperAdmin } = useSuperAdmin();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -43,6 +46,11 @@ export function UsersTab() {
   const [inviteRole, setInviteRole] = useState<AppRole>('viewer');
   const [inviting, setInviting] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingUser, setDeletingUser] = useState<UserWithRole | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -158,6 +166,49 @@ export function UsersTab() {
     }
   };
 
+  const openDeleteDialog = (user: UserWithRole) => {
+    setDeletingUser(user);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deletingUser) return;
+    
+    // Don't allow deleting yourself
+    if (deletingUser.id === currentUser?.id) {
+      toast({ title: 'Erro', description: 'Não pode eliminar a sua própria conta.', variant: 'destructive' });
+      return;
+    }
+    
+    setDeleting(true);
+    
+    try {
+      // Delete from user_roles first
+      await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', deletingUser.id);
+      
+      // Delete from profiles
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', deletingUser.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Utilizador eliminado', description: 'O utilizador foi removido com sucesso.' });
+      setDeleteDialogOpen(false);
+      setDeletingUser(null);
+      loadUsers();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast({ title: 'Erro', description: 'Não foi possível eliminar o utilizador.', variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const filteredUsers = users.filter(
     (u) =>
       u.nome?.toLowerCase().includes(search.toLowerCase()) ||
@@ -251,6 +302,7 @@ export function UsersTab() {
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
+                  {isSuperAdmin && <TableHead className="w-10"></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -300,6 +352,20 @@ export function UsersTab() {
                         </Badge>
                       )}
                     </TableCell>
+                    {isSuperAdmin && (
+                      <TableCell>
+                        {user.id !== currentUser?.id && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => openDeleteDialog(user)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -307,6 +373,16 @@ export function UsersTab() {
           </div>
         )}
       </CardContent>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDeleteUser}
+        loading={deleting}
+        title="Eliminar Utilizador"
+        description={`Tem a certeza que deseja eliminar o utilizador "${deletingUser?.nome || deletingUser?.email}"? Esta ação não pode ser desfeita.`}
+      />
     </Card>
   );
 }

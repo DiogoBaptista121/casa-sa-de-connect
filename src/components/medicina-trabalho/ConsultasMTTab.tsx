@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSuperAdmin } from '@/hooks/use-super-admin';
 import { DataTable, Column } from '@/components/ui/data-table';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog';
 import {
   Dialog,
   DialogContent,
@@ -44,7 +46,8 @@ import {
   Loader2,
   Stethoscope,
   Check,
-  ChevronsUpDown
+  ChevronsUpDown,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -55,6 +58,7 @@ import * as XLSX from 'xlsx';
 
 export function ConsultasMTTab() {
   const { canEdit, user } = useAuth();
+  const { isSuperAdmin } = useSuperAdmin();
   const [loading, setLoading] = useState(true);
   const [consultas, setConsultas] = useState<ConsultaMT[]>([]);
   const [funcionarios, setFuncionarios] = useState<FuncionarioMT[]>([]);
@@ -68,6 +72,11 @@ export function ConsultasMTTab() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingConsulta, setEditingConsulta] = useState<ConsultaMT | null>(null);
   const [saving, setSaving] = useState(false);
+  
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingConsulta, setDeletingConsulta] = useState<ConsultaMT | null>(null);
+  const [deleting, setDeleting] = useState(false);
   
   // Combobox
   const [funcionarioOpen, setFuncionarioOpen] = useState(false);
@@ -215,6 +224,32 @@ export function ConsultasMTTab() {
     }
 
     setSaving(false);
+  };
+
+  const openDeleteDialog = (consulta: ConsultaMT) => {
+    setDeletingConsulta(consulta);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingConsulta) return;
+    
+    setDeleting(true);
+    const { error } = await supabase
+      .from('consultas_mt')
+      .delete()
+      .eq('id', deletingConsulta.id);
+
+    if (error) {
+      console.error('Error deleting consulta_mt:', error);
+      toast.error('Erro ao eliminar consulta MT');
+    } else {
+      toast.success('Consulta MT eliminada com sucesso');
+      setDeleteDialogOpen(false);
+      setDeletingConsulta(null);
+      fetchData();
+    }
+    setDeleting(false);
   };
 
   const handleQuickStatusChange = async (consulta: ConsultaMT, newStatus: ConsultaStatus) => {
@@ -379,20 +414,36 @@ export function ConsultasMTTab() {
     {
       key: 'actions',
       header: '',
-      cell: (item) =>
-        canEdit && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              openEditModal(item);
-            }}
-          >
-            <Edit2 className="w-4 h-4" />
-          </Button>
-        ),
-      className: 'w-10',
+      cell: (item) => (
+        <div className="flex items-center gap-1">
+          {canEdit && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                openEditModal(item);
+              }}
+            >
+              <Edit2 className="w-4 h-4" />
+            </Button>
+          )}
+          {isSuperAdmin && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-destructive hover:text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                openDeleteDialog(item);
+              }}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      ),
+      className: 'w-20',
     },
   ];
 
@@ -637,6 +688,16 @@ export function ConsultasMTTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title="Eliminar Consulta MT"
+        description="Tem a certeza que deseja eliminar esta consulta de medicina do trabalho? Esta ação não pode ser desfeita."
+      />
     </div>
   );
 }
