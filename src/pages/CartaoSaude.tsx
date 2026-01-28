@@ -60,7 +60,6 @@ export default function CartaoSaudePage() {
   
   // Form state
   const [formData, setFormData] = useState({
-    numero_cartao: '',
     nome: '',
     email: '',
     telefone: '',
@@ -116,15 +115,10 @@ export default function CartaoSaudePage() {
     setFilteredCartoes(filtered);
   };
 
-  const generateNumeroCartao = () => {
-    const num = Math.floor(Math.random() * 9000) + 1000;
-    return `HC-${num}`;
-  };
 
   const openCreateModal = () => {
     setEditingCartao(null);
     setFormData({
-      numero_cartao: generateNumeroCartao(),
       nome: '',
       email: '',
       telefone: '',
@@ -140,11 +134,10 @@ export default function CartaoSaudePage() {
   const openEditModal = (cartao: CartaoSaude) => {
     setEditingCartao(cartao);
     setFormData({
-      numero_cartao: cartao.numero_cartao,
       nome: cartao.nome,
       email: cartao.email || '',
       telefone: cartao.telefone || '',
-      nif: cartao.nif || '',
+      nif: cartao.nif,
       data_nascimento: cartao.data_nascimento || '',
       morada: cartao.morada || '',
       estado: cartao.estado,
@@ -158,19 +151,18 @@ export default function CartaoSaudePage() {
       toast.error('O nome é obrigatório');
       return;
     }
-    if (!formData.numero_cartao.trim()) {
-      toast.error('O número do cartão é obrigatório');
+    if (!formData.nif.trim()) {
+      toast.error('O NIF é obrigatório');
       return;
     }
 
     setSaving(true);
 
     const payload = {
-      numero_cartao: formData.numero_cartao.trim(),
       nome: formData.nome.trim(),
       email: formData.email.trim() || null,
       telefone: formData.telefone.trim() || null,
-      nif: formData.nif.trim() || null,
+      nif: formData.nif.trim(),
       data_nascimento: formData.data_nascimento || null,
       morada: formData.morada.trim() || null,
       estado: formData.estado,
@@ -197,7 +189,7 @@ export default function CartaoSaudePage() {
       if (error) {
         console.error('Error creating cartao:', error);
         if (error.code === '23505') {
-          toast.error('Já existe um cartão com este número');
+          toast.error('Já existe um cartão com este NIF');
         } else {
           toast.error('Erro ao criar cartão');
         }
@@ -275,28 +267,32 @@ export default function CartaoSaudePage() {
         let errors = 0;
 
         for (const row of jsonData as any[]) {
+          const nif = (row['NIF'] || row['nif'] || '').toString().trim();
+          const nome = (row['Nome'] || row['nome'] || '').toString().trim();
+          
+          // NIF and Nome are required
+          if (!nif || !nome) {
+            errors++;
+            continue;
+          }
+
           const payload = {
-            numero_cartao: row['Número Cartão'] || row['numero_cartao'],
-            nome: row['Nome'] || row['nome'],
+            nome,
             email: row['Email'] || row['email'] || null,
             telefone: row['Telefone'] || row['telefone'] || null,
-            nif: row['NIF'] || row['nif'] || null,
+            nif,
             data_nascimento: row['Data Nascimento'] || row['data_nascimento'] || null,
             morada: row['Morada'] || row['morada'] || null,
             estado: (row['Estado'] || row['estado'] || 'ativo') as EstadoRegisto,
             notas: row['Notas'] || row['notas'] || null,
           };
 
-          if (!payload.numero_cartao || !payload.nome) {
-            errors++;
-            continue;
-          }
-
+          // Check if record exists by NIF (unique identifier)
           const { data: existing } = await supabase
             .from('cartao_saude')
             .select('id')
-            .eq('numero_cartao', payload.numero_cartao)
-            .single();
+            .eq('nif', nif)
+            .maybeSingle();
 
           if (existing) {
             const { error } = await supabase
@@ -306,6 +302,7 @@ export default function CartaoSaudePage() {
             if (!error) updated++;
             else errors++;
           } else {
+            // Insert without numero_cartao - it will be auto-generated
             const { error } = await supabase.from('cartao_saude').insert([payload]);
             if (!error) imported++;
             else errors++;
@@ -470,15 +467,20 @@ export default function CartaoSaudePage() {
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
+            {editingCartao && (
+              <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                <span className="text-sm text-muted-foreground">Nº Cartão:</span>
+                <span className="font-medium text-primary">{editingCartao.numero_cartao}</span>
+              </div>
+            )}
+            
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Número do Cartão *</Label>
+                <Label>NIF *</Label>
                 <Input
-                  value={formData.numero_cartao}
-                  onChange={(e) =>
-                    setFormData({ ...formData, numero_cartao: e.target.value })
-                  }
-                  placeholder="HC-0000"
+                  value={formData.nif}
+                  onChange={(e) => setFormData({ ...formData, nif: e.target.value })}
+                  placeholder="123456789"
                   disabled={!!editingCartao}
                 />
               </div>
@@ -532,25 +534,15 @@ export default function CartaoSaudePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>NIF</Label>
-                <Input
-                  value={formData.nif}
-                  onChange={(e) => setFormData({ ...formData, nif: e.target.value })}
-                  placeholder="123456789"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Data de Nascimento</Label>
-                <Input
-                  type="date"
-                  value={formData.data_nascimento}
-                  onChange={(e) =>
-                    setFormData({ ...formData, data_nascimento: e.target.value })
-                  }
-                />
-              </div>
+            <div className="space-y-2">
+              <Label>Data de Nascimento</Label>
+              <Input
+                type="date"
+                value={formData.data_nascimento}
+                onChange={(e) =>
+                  setFormData({ ...formData, data_nascimento: e.target.value })
+                }
+              />
             </div>
 
             <div className="space-y-2">

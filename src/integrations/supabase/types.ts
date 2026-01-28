@@ -58,10 +58,10 @@ export type Database = {
           estado: Database["public"]["Enums"]["estado_registo"] | null
           id: string
           morada: string | null
-          nif: string | null
+          nif: string
           nome: string
           notas: string | null
-          numero_cartao: string
+          numero_cartao: string | null
           telefone: string | null
           updated_at: string | null
         }
@@ -72,10 +72,10 @@ export type Database = {
           estado?: Database["public"]["Enums"]["estado_registo"] | null
           id?: string
           morada?: string | null
-          nif?: string | null
+          nif: string
           nome: string
           notas?: string | null
-          numero_cartao: string
+          numero_cartao?: string | null
           telefone?: string | null
           updated_at?: string | null
         }
@@ -86,10 +86,10 @@ export type Database = {
           estado?: Database["public"]["Enums"]["estado_registo"] | null
           id?: string
           morada?: string | null
-          nif?: string | null
+          nif?: string
           nome?: string
           notas?: string | null
-          numero_cartao?: string
+          numero_cartao?: string | null
           telefone?: string | null
           updated_at?: string | null
         }

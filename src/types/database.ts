@@ -28,7 +28,7 @@ export interface CartaoSaude {
   nome: string;
   email: string | null;
   telefone: string | null;
-  nif: string | null;
+  nif: string;
   data_nascimento: string | null;
   morada: string | null;
   estado: EstadoRegisto;
