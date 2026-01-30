@@ -472,9 +472,9 @@ export default function ConsultasPage() {
                     aria-expanded={pacienteOpen}
                     className="w-full justify-between font-normal"
                   >
-                    {selectedPaciente
-                      ? `${selectedPaciente.nome} (${selectedPaciente.numero_cartao})`
-                      : 'Selecione um paciente...'}
+                  {selectedPaciente
+                    ? `${selectedPaciente.nome_completo} (${selectedPaciente.numero_cartao})`
+                    : 'Selecione um paciente...'}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -487,7 +487,7 @@ export default function ConsultasPage() {
                         {cartoes.map((cartao) => (
                           <CommandItem
                             key={cartao.id}
-                            value={cartao.nome}
+                            value={cartao.nome_completo}
                             onSelect={() => {
                               setFormData({ ...formData, cartao_saude_id: cartao.id });
                               setPacienteOpen(false);
@@ -499,7 +499,7 @@ export default function ConsultasPage() {
                                 formData.cartao_saude_id === cartao.id ? "opacity-100" : "opacity-0"
                               )}
                             />
-                            {cartao.nome} ({cartao.numero_cartao})
+                            {cartao.nome_completo} ({cartao.numero_cartao})
                           </CommandItem>
                         ))}
                       </CommandGroup>

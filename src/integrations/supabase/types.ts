@@ -54,13 +54,17 @@ export type Database = {
         Row: {
           created_at: string | null
           data_nascimento: string | null
+          documento_numero: number | null
+          documento_tipo: string | null
+          documento_validade: string | null
           email: string | null
           estado: Database["public"]["Enums"]["estado_registo"] | null
+          estado_entrega: string | null
+          freguesia: string | null
           id: string
           morada: string | null
           nif: string
-          nome: string
-          notas: string | null
+          nome_completo: string
           numero_cartao: string | null
           telefone: string | null
           updated_at: string | null
@@ -68,13 +72,17 @@ export type Database = {
         Insert: {
           created_at?: string | null
           data_nascimento?: string | null
+          documento_numero?: number | null
+          documento_tipo?: string | null
+          documento_validade?: string | null
           email?: string | null
           estado?: Database["public"]["Enums"]["estado_registo"] | null
+          estado_entrega?: string | null
+          freguesia?: string | null
           id?: string
           morada?: string | null
           nif: string
-          nome: string
-          notas?: string | null
+          nome_completo: string
           numero_cartao?: string | null
           telefone?: string | null
           updated_at?: string | null
@@ -82,13 +90,17 @@ export type Database = {
         Update: {
           created_at?: string | null
           data_nascimento?: string | null
+          documento_numero?: number | null
+          documento_tipo?: string | null
+          documento_validade?: string | null
           email?: string | null
           estado?: Database["public"]["Enums"]["estado_registo"] | null
+          estado_entrega?: string | null
+          freguesia?: string | null
           id?: string
           morada?: string | null
           nif?: string
-          nome?: string
-          notas?: string | null
+          nome_completo?: string
           numero_cartao?: string | null
           telefone?: string | null
           updated_at?: string | null

@@ -4,6 +4,8 @@ export type AppRole = 'admin' | 'staff' | 'viewer';
 export type ConsultaStatus = 'agendada' | 'confirmada' | 'concluida' | 'cancelada' | 'falta' | 'remarcada';
 export type ConsultaOrigem = 'casa_saude' | 'unidade_movel';
 export type EstadoRegisto = 'ativo' | 'inativo';
+export type DocumentoTipo = 'CC' | 'BI';
+export type EstadoEntrega = 'ENTREGUE' | 'NAO_ENTREGUE' | 'PENDENTE' | 'CANCELADO';
 
 export interface Profile {
   id: string;
@@ -24,17 +26,21 @@ export interface UserRole {
 
 export interface CartaoSaude {
   id: string;
-  numero_cartao: string;
-  nome: string;
+  numero_cartao: string | null;
+  nome_completo: string;
+  data_nascimento: string | null;
+  nif: string;
+  documento_tipo: DocumentoTipo | null;
+  documento_numero: number | null;
+  documento_validade: string | null;
+  morada: string | null;
+  freguesia: string | null;
   email: string | null;
   telefone: string | null;
-  nif: string;
-  data_nascimento: string | null;
-  morada: string | null;
-  estado: EstadoRegisto;
-  notas: string | null;
-  created_at: string;
-  updated_at: string;
+  estado: EstadoRegisto | null;
+  estado_entrega: EstadoEntrega | null;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface Servico {
@@ -154,4 +160,23 @@ export const estadoLabels: Record<EstadoRegisto, string> = {
 export const estadoColors: Record<EstadoRegisto, string> = {
   ativo: 'badge-ativo',
   inativo: 'badge-inativo',
+};
+
+export const documentoTipoLabels: Record<DocumentoTipo, string> = {
+  CC: 'Cartão de Cidadão',
+  BI: 'Bilhete de Identidade',
+};
+
+export const estadoEntregaLabels: Record<EstadoEntrega, string> = {
+  ENTREGUE: 'Entregue',
+  NAO_ENTREGUE: 'Não Entregue',
+  PENDENTE: 'Pendente',
+  CANCELADO: 'Cancelado',
+};
+
+export const estadoEntregaColors: Record<EstadoEntrega, string> = {
+  ENTREGUE: 'badge-concluida',
+  NAO_ENTREGUE: 'badge-falta',
+  PENDENTE: 'badge-agendada',
+  CANCELADO: 'badge-cancelada',
 };

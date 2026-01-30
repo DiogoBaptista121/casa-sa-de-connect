@@ -305,7 +305,7 @@ export function AppointmentModal({
                         className="w-full justify-between font-normal"
                       >
                         {selectedPaciente
-                          ? `${selectedPaciente.nome} (${selectedPaciente.numero_cartao})`
+                          ? `${selectedPaciente.nome_completo} (${selectedPaciente.numero_cartao})`
                           : 'Selecione um paciente...'}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
@@ -319,7 +319,7 @@ export function AppointmentModal({
                             {pacientes.map((p) => (
                               <CommandItem
                                 key={p.id}
-                                value={`${p.nome} ${p.numero_cartao}`}
+                                value={`${p.nome_completo} ${p.numero_cartao}`}
                                 onSelect={() => {
                                   setFormData({ ...formData, cartao_saude_id: p.id });
                                   setPacienteOpen(false);
@@ -334,7 +334,7 @@ export function AppointmentModal({
                                   )}
                                 />
                                 <div>
-                                  <p>{p.nome}</p>
+                                  <p>{p.nome_completo}</p>
                                   <p className="text-xs text-muted-foreground">
                                     {p.numero_cartao}
                                   </p>
