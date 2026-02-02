@@ -74,14 +74,18 @@ export interface Consulta {
 export interface FuncionarioMT {
   id: string;
   numero_funcionario: string;
-  nome: string;
-  email: string | null;
+  nome_completo: string;
   telefone: string | null;
   data_nascimento: string | null;
   departamento: string | null;
   posicao: string | null;
+  categoria: string | null;
+  divisao: string | null;
+  gabinetes: string | null;
+  servicos: string | null;
+  admissao: string | null;
+  ultimo_exame: string | null;
   estado: EstadoRegisto;
-  notas: string | null;
   created_at: string;
   updated_at: string;
 }

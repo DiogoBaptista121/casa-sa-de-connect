@@ -548,7 +548,7 @@ export function ConsultasMTTab() {
                     className="w-full justify-between font-normal"
                   >
                     {selectedFuncionario
-                      ? `${selectedFuncionario.nome} (${selectedFuncionario.numero_funcionario})`
+                      ? `${selectedFuncionario.nome_completo} (${selectedFuncionario.numero_funcionario})`
                       : 'Selecione um funcionário...'}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
@@ -562,7 +562,7 @@ export function ConsultasMTTab() {
                         {funcionarios.map((func) => (
                           <CommandItem
                             key={func.id}
-                            value={func.nome}
+                            value={func.nome_completo}
                             onSelect={() => {
                               setFormData({ ...formData, funcionario_id: func.id });
                               setFuncionarioOpen(false);
@@ -574,7 +574,7 @@ export function ConsultasMTTab() {
                                 formData.funcionario_id === func.id ? "opacity-100" : "opacity-0"
                               )}
                             />
-                            {func.nome} ({func.numero_funcionario})
+                            {func.nome_completo} ({func.numero_funcionario})
                           </CommandItem>
                         ))}
                       </CommandGroup>

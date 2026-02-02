@@ -38,6 +38,19 @@ import { toast } from 'sonner';
 import type { FuncionarioMT, EstadoRegisto } from '@/types/database';
 import * as XLSX from 'xlsx';
 
+// Helper to calculate age from date of birth
+const calculateAge = (dataNascimento: string | null): number | null => {
+  if (!dataNascimento) return null;
+  const today = new Date();
+  const birthDate = new Date(dataNascimento);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+};
+
 export function FuncionariosTab() {
   const { canEdit } = useAuth();
   const { isSuperAdmin } = useSuperAdmin();
@@ -57,17 +70,21 @@ export function FuncionariosTab() {
   const [deletingFuncionario, setDeletingFuncionario] = useState<FuncionarioMT | null>(null);
   const [deleting, setDeleting] = useState(false);
   
-  // Form state
+  // Form state - aligned with database columns
   const [formData, setFormData] = useState({
     numero_funcionario: '',
-    nome: '',
-    email: '',
+    nome_completo: '',
     telefone: '',
+    data_nascimento: '',
     departamento: '',
     posicao: '',
-    data_nascimento: '',
+    categoria: '',
+    divisao: '',
+    gabinetes: '',
+    servicos: '',
+    admissao: '',
+    ultimo_exame: '',
     estado: 'ativo' as EstadoRegisto,
-    notas: '',
   });
 
   useEffect(() => {
@@ -101,9 +118,9 @@ export function FuncionariosTab() {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (f) =>
-          f.nome.toLowerCase().includes(term) ||
+          f.nome_completo.toLowerCase().includes(term) ||
           f.numero_funcionario.toLowerCase().includes(term) ||
-          f.email?.toLowerCase().includes(term) ||
+          f.telefone?.toLowerCase().includes(term) ||
           f.departamento?.toLowerCase().includes(term)
       );
     }
@@ -115,23 +132,22 @@ export function FuncionariosTab() {
     setFilteredFuncionarios(filtered);
   };
 
-  const generateNumeroFuncionario = () => {
-    const num = Math.floor(Math.random() * 9000) + 1000;
-    return `MT-${num}`;
-  };
-
   const openCreateModal = () => {
     setEditingFuncionario(null);
     setFormData({
-      numero_funcionario: generateNumeroFuncionario(),
-      nome: '',
-      email: '',
+      numero_funcionario: '',
+      nome_completo: '',
       telefone: '',
+      data_nascimento: '',
       departamento: '',
       posicao: '',
-      data_nascimento: '',
+      categoria: '',
+      divisao: '',
+      gabinetes: '',
+      servicos: '',
+      admissao: '',
+      ultimo_exame: '',
       estado: 'ativo',
-      notas: '',
     });
     setModalOpen(true);
   };
@@ -140,25 +156,29 @@ export function FuncionariosTab() {
     setEditingFuncionario(funcionario);
     setFormData({
       numero_funcionario: funcionario.numero_funcionario,
-      nome: funcionario.nome,
-      email: funcionario.email || '',
+      nome_completo: funcionario.nome_completo,
       telefone: funcionario.telefone || '',
+      data_nascimento: funcionario.data_nascimento || '',
       departamento: funcionario.departamento || '',
       posicao: funcionario.posicao || '',
-      data_nascimento: funcionario.data_nascimento || '',
+      categoria: funcionario.categoria || '',
+      divisao: funcionario.divisao || '',
+      gabinetes: funcionario.gabinetes || '',
+      servicos: funcionario.servicos || '',
+      admissao: funcionario.admissao || '',
+      ultimo_exame: funcionario.ultimo_exame || '',
       estado: funcionario.estado,
-      notas: funcionario.notas || '',
     });
     setModalOpen(true);
   };
 
   const handleSave = async () => {
-    if (!formData.nome.trim()) {
-      toast.error('O nome é obrigatório');
-      return;
-    }
     if (!formData.numero_funcionario.trim()) {
       toast.error('O número do funcionário é obrigatório');
+      return;
+    }
+    if (!formData.nome_completo.trim()) {
+      toast.error('O nome é obrigatório');
       return;
     }
 
@@ -166,14 +186,18 @@ export function FuncionariosTab() {
 
     const payload = {
       numero_funcionario: formData.numero_funcionario.trim(),
-      nome: formData.nome.trim(),
-      email: formData.email.trim() || null,
+      nome_completo: formData.nome_completo.trim(),
       telefone: formData.telefone.trim() || null,
+      data_nascimento: formData.data_nascimento || null,
       departamento: formData.departamento.trim() || null,
       posicao: formData.posicao.trim() || null,
-      data_nascimento: formData.data_nascimento || null,
+      categoria: formData.categoria.trim() || null,
+      divisao: formData.divisao.trim() || null,
+      gabinetes: formData.gabinetes.trim() || null,
+      servicos: formData.servicos.trim() || null,
+      admissao: formData.admissao || null,
+      ultimo_exame: formData.ultimo_exame || null,
       estado: formData.estado,
-      notas: formData.notas.trim() || null,
     };
 
     if (editingFuncionario) {
@@ -184,7 +208,11 @@ export function FuncionariosTab() {
 
       if (error) {
         console.error('Error updating funcionario:', error);
-        toast.error('Erro ao atualizar funcionário');
+        if (error.code === '23505') {
+          toast.error('Já existe um funcionário com este Nº');
+        } else {
+          toast.error('Erro ao atualizar funcionário');
+        }
       } else {
         toast.success('Funcionário atualizado com sucesso');
         setModalOpen(false);
@@ -196,7 +224,7 @@ export function FuncionariosTab() {
       if (error) {
         console.error('Error creating funcionario:', error);
         if (error.code === '23505') {
-          toast.error('Já existe um funcionário com este número');
+          toast.error('Já existe um funcionário com este Nº');
         } else {
           toast.error('Erro ao criar funcionário');
         }
@@ -238,15 +266,19 @@ export function FuncionariosTab() {
 
   const handleExport = () => {
     const exportData = filteredFuncionarios.map((f) => ({
-      'Número Funcionário': f.numero_funcionario,
-      'Nome': f.nome,
-      'Email': f.email || '',
-      'Telefone': f.telefone || '',
-      'Departamento': f.departamento || '',
-      'Posição': f.posicao || '',
-      'Data Nascimento': f.data_nascimento || '',
-      'Estado': f.estado,
-      'Notas': f.notas || '',
+      'numero_funcionario': f.numero_funcionario,
+      'nome_completo': f.nome_completo,
+      'telefone': f.telefone || '',
+      'data_nascimento': f.data_nascimento || '',
+      'departamento': f.departamento || '',
+      'posicao': f.posicao || '',
+      'categoria': f.categoria || '',
+      'divisao': f.divisao || '',
+      'gabinetes': f.gabinetes || '',
+      'servicos': f.servicos || '',
+      'admissao': f.admissao || '',
+      'ultimo_exame': f.ultimo_exame || '',
+      'estado': f.estado,
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
@@ -275,18 +307,22 @@ export function FuncionariosTab() {
 
         for (const row of jsonData as any[]) {
           const payload = {
-            numero_funcionario: row['Número Funcionário'] || row['numero_funcionario'],
-            nome: row['Nome'] || row['nome'],
-            email: row['Email'] || row['email'] || null,
-            telefone: row['Telefone'] || row['telefone'] || null,
-            departamento: row['Departamento'] || row['departamento'] || null,
-            posicao: row['Posição'] || row['posicao'] || null,
-            data_nascimento: row['Data Nascimento'] || row['data_nascimento'] || null,
-            estado: (row['Estado'] || row['estado'] || 'ativo') as EstadoRegisto,
-            notas: row['Notas'] || row['notas'] || null,
+            numero_funcionario: row['numero_funcionario'] || row['Número Funcionário'],
+            nome_completo: row['nome_completo'] || row['Nome Completo'] || row['Nome'],
+            telefone: row['telefone'] || row['Telefone'] || null,
+            data_nascimento: row['data_nascimento'] || row['Data Nascimento'] || null,
+            departamento: row['departamento'] || row['Departamento'] || null,
+            posicao: row['posicao'] || row['Posição'] || null,
+            categoria: row['categoria'] || row['Categoria'] || null,
+            divisao: row['divisao'] || row['Divisão'] || null,
+            gabinetes: row['gabinetes'] || row['Gabinetes'] || null,
+            servicos: row['servicos'] || row['Serviços'] || null,
+            admissao: row['admissao'] || row['Admissão'] || null,
+            ultimo_exame: row['ultimo_exame'] || row['Último Exame'] || null,
+            estado: (row['estado'] || row['Estado'] || 'ativo') as EstadoRegisto,
           };
 
-          if (!payload.numero_funcionario || !payload.nome) {
+          if (!payload.numero_funcionario || !payload.nome_completo) {
             errors++;
             continue;
           }
@@ -331,9 +367,9 @@ export function FuncionariosTab() {
       ),
     },
     {
-      key: 'nome',
+      key: 'nome_completo',
       header: 'Nome',
-      cell: (item) => <span className="font-medium">{item.nome}</span>,
+      cell: (item) => <span className="font-medium">{item.nome_completo}</span>,
     },
     {
       key: 'departamento',
@@ -341,9 +377,17 @@ export function FuncionariosTab() {
       cell: (item) => item.departamento || '-',
     },
     {
-      key: 'email',
-      header: 'Email',
-      cell: (item) => item.email || '-',
+      key: 'telefone',
+      header: 'Telefone',
+      cell: (item) => item.telefone || '-',
+    },
+    {
+      key: 'idade',
+      header: 'Idade',
+      cell: (item) => {
+        const age = calculateAge(item.data_nascimento);
+        return age !== null ? `${age} anos` : '-';
+      },
     },
     {
       key: 'estado',
@@ -394,7 +438,7 @@ export function FuncionariosTab() {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Pesquisar por nome, número, email..."
+              placeholder="Pesquisar por nome, número, telefone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -452,7 +496,7 @@ export function FuncionariosTab() {
 
       {/* Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Users className="w-5 h-5 text-primary" />
@@ -466,6 +510,7 @@ export function FuncionariosTab() {
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
+            {/* Row 1: Número + Estado */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Número do Funcionário *</Label>
@@ -474,8 +519,7 @@ export function FuncionariosTab() {
                   onChange={(e) =>
                     setFormData({ ...formData, numero_funcionario: e.target.value })
                   }
-                  placeholder="MT-0000"
-                  disabled={!!editingFuncionario}
+                  placeholder="Ex: 12345"
                 />
               </div>
               <div className="space-y-2">
@@ -497,37 +541,39 @@ export function FuncionariosTab() {
               </div>
             </div>
 
+            {/* Row 2: Nome Completo */}
             <div className="space-y-2">
               <Label>Nome Completo *</Label>
               <Input
-                value={formData.nome}
-                onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                value={formData.nome_completo}
+                onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
                 placeholder="Nome do funcionário"
               />
             </div>
 
+            {/* Row 3: Telefone + Data Nascimento */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="email@exemplo.com"
-                />
-              </div>
               <div className="space-y-2">
                 <Label>Telefone</Label>
                 <Input
                   value={formData.telefone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, telefone: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
                   placeholder="912345678"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Data de Nascimento</Label>
+                <Input
+                  type="date"
+                  value={formData.data_nascimento}
+                  onChange={(e) =>
+                    setFormData({ ...formData, data_nascimento: e.target.value })
+                  }
                 />
               </div>
             </div>
 
+            {/* Row 4: Departamento + Divisão */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Departamento</Label>
@@ -535,6 +581,26 @@ export function FuncionariosTab() {
                   value={formData.departamento}
                   onChange={(e) => setFormData({ ...formData, departamento: e.target.value })}
                   placeholder="Ex: Recursos Humanos"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Divisão</Label>
+                <Input
+                  value={formData.divisao}
+                  onChange={(e) => setFormData({ ...formData, divisao: e.target.value })}
+                  placeholder="Ex: Norte"
+                />
+              </div>
+            </div>
+
+            {/* Row 5: Categoria + Posição */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Categoria</Label>
+                <Input
+                  value={formData.categoria}
+                  onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
+                  placeholder="Ex: Técnico Superior"
                 />
               </div>
               <div className="space-y-2">
@@ -547,25 +613,44 @@ export function FuncionariosTab() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Data de Nascimento</Label>
-              <Input
-                type="date"
-                value={formData.data_nascimento}
-                onChange={(e) =>
-                  setFormData({ ...formData, data_nascimento: e.target.value })
-                }
-              />
+            {/* Row 6: Gabinetes + Serviços */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Gabinetes</Label>
+                <Input
+                  value={formData.gabinetes}
+                  onChange={(e) => setFormData({ ...formData, gabinetes: e.target.value })}
+                  placeholder="Ex: Gabinete A"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Serviços</Label>
+                <Input
+                  value={formData.servicos}
+                  onChange={(e) => setFormData({ ...formData, servicos: e.target.value })}
+                  placeholder="Ex: Manutenção"
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Notas</Label>
-              <Textarea
-                value={formData.notas}
-                onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
-                placeholder="Observações adicionais..."
-                rows={3}
-              />
+            {/* Row 7: Admissão + Último Exame */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Data de Admissão</Label>
+                <Input
+                  type="date"
+                  value={formData.admissao}
+                  onChange={(e) => setFormData({ ...formData, admissao: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Último Exame</Label>
+                <Input
+                  type="date"
+                  value={formData.ultimo_exame}
+                  onChange={(e) => setFormData({ ...formData, ultimo_exame: e.target.value })}
+                />
+              </div>
             </div>
           </div>
 
@@ -588,7 +673,7 @@ export function FuncionariosTab() {
         onConfirm={handleDelete}
         loading={deleting}
         title="Eliminar Funcionário"
-        description={`Tem a certeza que deseja eliminar o funcionário "${deletingFuncionario?.nome}"? Esta ação não pode ser desfeita e irá remover todas as consultas MT associadas.`}
+        description={`Tem a certeza que deseja eliminar o funcionário "${deletingFuncionario?.nome_completo}"? Esta ação não pode ser desfeita e irá remover todas as consultas MT associadas.`}
       />
     </div>
   );

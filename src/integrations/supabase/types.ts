@@ -176,6 +176,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "consultas_cartao_saude_fk"
+            columns: ["cartao_saude_id"]
+            isOneToOne: false
+            referencedRelation: "cartao_saude"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "consultas_cartao_saude_id_fkey"
             columns: ["cartao_saude_id"]
             isOneToOne: false
@@ -239,49 +246,68 @@ export type Database = {
             referencedRelation: "funcionarios_mt"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "consultas_mt_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios_mt_vw"
+            referencedColumns: ["id"]
+          },
         ]
       }
       funcionarios_mt: {
         Row: {
+          admissao: string | null
+          categoria: string | null
           created_at: string | null
           data_nascimento: string | null
           departamento: string | null
-          email: string | null
+          divisao: string | null
           estado: Database["public"]["Enums"]["estado_registo"] | null
+          gabinetes: string | null
           id: string
-          nome: string
-          notas: string | null
+          nome_completo: string
           numero_funcionario: string
           posicao: string | null
+          servicos: string | null
           telefone: string | null
+          ultimo_exame: string | null
           updated_at: string | null
         }
         Insert: {
+          admissao?: string | null
+          categoria?: string | null
           created_at?: string | null
           data_nascimento?: string | null
           departamento?: string | null
-          email?: string | null
+          divisao?: string | null
           estado?: Database["public"]["Enums"]["estado_registo"] | null
+          gabinetes?: string | null
           id?: string
-          nome: string
-          notas?: string | null
+          nome_completo: string
           numero_funcionario: string
           posicao?: string | null
+          servicos?: string | null
           telefone?: string | null
+          ultimo_exame?: string | null
           updated_at?: string | null
         }
         Update: {
+          admissao?: string | null
+          categoria?: string | null
           created_at?: string | null
           data_nascimento?: string | null
           departamento?: string | null
-          email?: string | null
+          divisao?: string | null
           estado?: Database["public"]["Enums"]["estado_registo"] | null
+          gabinetes?: string | null
           id?: string
-          nome?: string
-          notas?: string | null
+          nome_completo?: string
           numero_funcionario?: string
           posicao?: string | null
+          servicos?: string | null
           telefone?: string | null
+          ultimo_exame?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -372,7 +398,63 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      funcionarios_mt_vw: {
+        Row: {
+          admissao: string | null
+          categoria: string | null
+          created_at: string | null
+          data_nascimento: string | null
+          departamento: string | null
+          divisao: string | null
+          estado: Database["public"]["Enums"]["estado_registo"] | null
+          gabinetes: string | null
+          id: string | null
+          idade: number | null
+          nome_completo: string | null
+          numero_funcionario: string | null
+          servicos: string | null
+          telefone: string | null
+          ultimo_exame: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          admissao?: string | null
+          categoria?: string | null
+          created_at?: string | null
+          data_nascimento?: string | null
+          departamento?: string | null
+          divisao?: string | null
+          estado?: Database["public"]["Enums"]["estado_registo"] | null
+          gabinetes?: string | null
+          id?: string | null
+          idade?: never
+          nome_completo?: string | null
+          numero_funcionario?: string | null
+          servicos?: string | null
+          telefone?: string | null
+          ultimo_exame?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          admissao?: string | null
+          categoria?: string | null
+          created_at?: string | null
+          data_nascimento?: string | null
+          departamento?: string | null
+          divisao?: string | null
+          estado?: Database["public"]["Enums"]["estado_registo"] | null
+          gabinetes?: string | null
+          id?: string | null
+          idade?: never
+          nome_completo?: string | null
+          numero_funcionario?: string | null
+          servicos?: string | null
+          telefone?: string | null
+          ultimo_exame?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_user_role: {
