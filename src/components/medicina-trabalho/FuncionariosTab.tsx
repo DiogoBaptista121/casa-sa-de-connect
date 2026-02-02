@@ -7,7 +7,6 @@ import { EstadoBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog';
 import {
   Dialog,
@@ -36,19 +35,19 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { FuncionarioMT, EstadoRegisto } from '@/types/database';
+import {
+  categoriaOptions,
+  divisaoOptions,
+  departamentoOptions,
+  gabinetesOptions,
+  servicosOptions,
+} from '@/types/database';
 import * as XLSX from 'xlsx';
 
-// Helper to calculate age from date of birth
-const calculateAge = (dataNascimento: string | null): number | null => {
-  if (!dataNascimento) return null;
-  const today = new Date();
-  const birthDate = new Date(dataNascimento);
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  return age;
+// Helper to format date for display
+const formatDate = (date: string | null): string => {
+  if (!date) return '-';
+  return new Date(date).toLocaleDateString('pt-PT');
 };
 
 export function FuncionariosTab() {
@@ -70,14 +69,13 @@ export function FuncionariosTab() {
   const [deletingFuncionario, setDeletingFuncionario] = useState<FuncionarioMT | null>(null);
   const [deleting, setDeleting] = useState(false);
   
-  // Form state - aligned with database columns
+  // Form state - aligned with database columns (no posicao)
   const [formData, setFormData] = useState({
     numero_funcionario: '',
     nome_completo: '',
     telefone: '',
     data_nascimento: '',
     departamento: '',
-    posicao: '',
     categoria: '',
     divisao: '',
     gabinetes: '',
@@ -86,6 +84,9 @@ export function FuncionariosTab() {
     ultimo_exame: '',
     estado: 'ativo' as EstadoRegisto,
   });
+
+  // Form validation errors
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchFuncionarios();
@@ -121,7 +122,9 @@ export function FuncionariosTab() {
           f.nome_completo.toLowerCase().includes(term) ||
           f.numero_funcionario.toLowerCase().includes(term) ||
           f.telefone?.toLowerCase().includes(term) ||
-          f.departamento?.toLowerCase().includes(term)
+          f.departamento?.toLowerCase().includes(term) ||
+          f.categoria?.toLowerCase().includes(term) ||
+          f.divisao?.toLowerCase().includes(term)
       );
     }
 
@@ -132,15 +135,13 @@ export function FuncionariosTab() {
     setFilteredFuncionarios(filtered);
   };
 
-  const openCreateModal = () => {
-    setEditingFuncionario(null);
+  const resetForm = () => {
     setFormData({
       numero_funcionario: '',
       nome_completo: '',
       telefone: '',
       data_nascimento: '',
       departamento: '',
-      posicao: '',
       categoria: '',
       divisao: '',
       gabinetes: '',
@@ -149,6 +150,12 @@ export function FuncionariosTab() {
       ultimo_exame: '',
       estado: 'ativo',
     });
+    setFormErrors({});
+  };
+
+  const openCreateModal = () => {
+    setEditingFuncionario(null);
+    resetForm();
     setModalOpen(true);
   };
 
@@ -160,7 +167,6 @@ export function FuncionariosTab() {
       telefone: funcionario.telefone || '',
       data_nascimento: funcionario.data_nascimento || '',
       departamento: funcionario.departamento || '',
-      posicao: funcionario.posicao || '',
       categoria: funcionario.categoria || '',
       divisao: funcionario.divisao || '',
       gabinetes: funcionario.gabinetes || '',
@@ -169,16 +175,36 @@ export function FuncionariosTab() {
       ultimo_exame: funcionario.ultimo_exame || '',
       estado: funcionario.estado,
     });
+    setFormErrors({});
     setModalOpen(true);
   };
 
-  const handleSave = async () => {
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    // Validate numero_funcionario - required and numeric only
     if (!formData.numero_funcionario.trim()) {
-      toast.error('O número do funcionário é obrigatório');
-      return;
+      errors.numero_funcionario = 'Nº de Funcionário é obrigatório';
+    } else if (!/^\d+$/.test(formData.numero_funcionario.trim())) {
+      errors.numero_funcionario = 'Nº de Funcionário deve conter apenas números';
     }
+
+    // Validate nome_completo - required
     if (!formData.nome_completo.trim()) {
-      toast.error('O nome é obrigatório');
+      errors.nome_completo = 'Nome Completo é obrigatório';
+    }
+
+    // Validate telefone - if provided, must be 9 digits
+    if (formData.telefone && !/^\d{9}$/.test(formData.telefone.trim())) {
+      errors.telefone = 'Telefone deve ter 9 dígitos';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) {
       return;
     }
 
@@ -189,12 +215,11 @@ export function FuncionariosTab() {
       nome_completo: formData.nome_completo.trim(),
       telefone: formData.telefone.trim() || null,
       data_nascimento: formData.data_nascimento || null,
-      departamento: formData.departamento.trim() || null,
-      posicao: formData.posicao.trim() || null,
-      categoria: formData.categoria.trim() || null,
-      divisao: formData.divisao.trim() || null,
-      gabinetes: formData.gabinetes.trim() || null,
-      servicos: formData.servicos.trim() || null,
+      departamento: formData.departamento || null,
+      categoria: formData.categoria || null,
+      divisao: formData.divisao || null,
+      gabinetes: formData.gabinetes || null,
+      servicos: formData.servicos || null,
       admissao: formData.admissao || null,
       ultimo_exame: formData.ultimo_exame || null,
       estado: formData.estado,
@@ -210,6 +235,8 @@ export function FuncionariosTab() {
         console.error('Error updating funcionario:', error);
         if (error.code === '23505') {
           toast.error('Já existe um funcionário com este Nº');
+        } else if (error.code === '23514') {
+          toast.error('Valor inválido. Selecione uma opção da lista.');
         } else {
           toast.error('Erro ao atualizar funcionário');
         }
@@ -225,6 +252,8 @@ export function FuncionariosTab() {
         console.error('Error creating funcionario:', error);
         if (error.code === '23505') {
           toast.error('Já existe um funcionário com este Nº');
+        } else if (error.code === '23514') {
+          toast.error('Valor inválido. Selecione uma opção da lista.');
         } else {
           toast.error('Erro ao criar funcionário');
         }
@@ -268,16 +297,15 @@ export function FuncionariosTab() {
     const exportData = filteredFuncionarios.map((f) => ({
       'numero_funcionario': f.numero_funcionario,
       'nome_completo': f.nome_completo,
-      'telefone': f.telefone || '',
-      'data_nascimento': f.data_nascimento || '',
-      'departamento': f.departamento || '',
-      'posicao': f.posicao || '',
       'categoria': f.categoria || '',
       'divisao': f.divisao || '',
+      'departamento': f.departamento || '',
       'gabinetes': f.gabinetes || '',
       'servicos': f.servicos || '',
       'admissao': f.admissao || '',
       'ultimo_exame': f.ultimo_exame || '',
+      'data_nascimento': f.data_nascimento || '',
+      'telefone': f.telefone || '',
       'estado': f.estado,
     }));
 
@@ -307,22 +335,28 @@ export function FuncionariosTab() {
 
         for (const row of jsonData as any[]) {
           const payload = {
-            numero_funcionario: row['numero_funcionario'] || row['Número Funcionário'],
-            nome_completo: row['nome_completo'] || row['Nome Completo'] || row['Nome'],
-            telefone: row['telefone'] || row['Telefone'] || null,
-            data_nascimento: row['data_nascimento'] || row['Data Nascimento'] || null,
-            departamento: row['departamento'] || row['Departamento'] || null,
-            posicao: row['posicao'] || row['Posição'] || null,
+            numero_funcionario: String(row['numero_funcionario'] || row['Número Funcionário'] || ''),
+            nome_completo: row['nome_completo'] || row['Nome Completo'] || row['Nome'] || '',
             categoria: row['categoria'] || row['Categoria'] || null,
             divisao: row['divisao'] || row['Divisão'] || null,
+            departamento: row['departamento'] || row['Departamento'] || null,
             gabinetes: row['gabinetes'] || row['Gabinetes'] || null,
             servicos: row['servicos'] || row['Serviços'] || null,
             admissao: row['admissao'] || row['Admissão'] || null,
             ultimo_exame: row['ultimo_exame'] || row['Último Exame'] || null,
+            data_nascimento: row['data_nascimento'] || row['Data Nascimento'] || null,
+            telefone: row['telefone'] || row['Telefone'] || null,
             estado: (row['estado'] || row['Estado'] || 'ativo') as EstadoRegisto,
           };
 
+          // Validate required fields
           if (!payload.numero_funcionario || !payload.nome_completo) {
+            errors++;
+            continue;
+          }
+
+          // Validate numero_funcionario is numeric
+          if (!/^\d+$/.test(payload.numero_funcionario)) {
             errors++;
             continue;
           }
@@ -368,8 +402,18 @@ export function FuncionariosTab() {
     },
     {
       key: 'nome_completo',
-      header: 'Nome',
+      header: 'Nome Completo',
       cell: (item) => <span className="font-medium">{item.nome_completo}</span>,
+    },
+    {
+      key: 'categoria',
+      header: 'Categoria',
+      cell: (item) => item.categoria || '-',
+    },
+    {
+      key: 'divisao',
+      header: 'Divisão',
+      cell: (item) => item.divisao || '-',
     },
     {
       key: 'departamento',
@@ -377,22 +421,29 @@ export function FuncionariosTab() {
       cell: (item) => item.departamento || '-',
     },
     {
+      key: 'gabinetes',
+      header: 'Gabinetes',
+      cell: (item) => item.gabinetes || '-',
+    },
+    {
+      key: 'servicos',
+      header: 'Serviços',
+      cell: (item) => item.servicos || '-',
+    },
+    {
+      key: 'admissao',
+      header: 'Admissão',
+      cell: (item) => formatDate(item.admissao),
+    },
+    {
+      key: 'ultimo_exame',
+      header: 'Último Exame',
+      cell: (item) => formatDate(item.ultimo_exame),
+    },
+    {
       key: 'telefone',
       header: 'Telefone',
       cell: (item) => item.telefone || '-',
-    },
-    {
-      key: 'idade',
-      header: 'Idade',
-      cell: (item) => {
-        const age = calculateAge(item.data_nascimento);
-        return age !== null ? `${age} anos` : '-';
-      },
-    },
-    {
-      key: 'estado',
-      header: 'Estado',
-      cell: (item) => <EstadoBadge estado={item.estado} />,
     },
     {
       key: 'actions',
@@ -520,7 +571,11 @@ export function FuncionariosTab() {
                     setFormData({ ...formData, numero_funcionario: e.target.value })
                   }
                   placeholder="Ex: 12345"
+                  className={formErrors.numero_funcionario ? 'border-destructive' : ''}
                 />
+                {formErrors.numero_funcionario && (
+                  <p className="text-sm text-destructive">{formErrors.numero_funcionario}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Estado</Label>
@@ -548,7 +603,11 @@ export function FuncionariosTab() {
                 value={formData.nome_completo}
                 onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
                 placeholder="Nome do funcionário"
+                className={formErrors.nome_completo ? 'border-destructive' : ''}
               />
+              {formErrors.nome_completo && (
+                <p className="text-sm text-destructive">{formErrors.nome_completo}</p>
+              )}
             </div>
 
             {/* Row 3: Telefone + Data Nascimento */}
@@ -559,7 +618,12 @@ export function FuncionariosTab() {
                   value={formData.telefone}
                   onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
                   placeholder="912345678"
+                  maxLength={9}
+                  className={formErrors.telefone ? 'border-destructive' : ''}
                 />
+                {formErrors.telefone && (
+                  <p className="text-sm text-destructive">{formErrors.telefone}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Data de Nascimento</Label>
@@ -573,64 +637,94 @@ export function FuncionariosTab() {
               </div>
             </div>
 
-            {/* Row 4: Departamento + Divisão */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Departamento</Label>
-                <Input
-                  value={formData.departamento}
-                  onChange={(e) => setFormData({ ...formData, departamento: e.target.value })}
-                  placeholder="Ex: Recursos Humanos"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Divisão</Label>
-                <Input
-                  value={formData.divisao}
-                  onChange={(e) => setFormData({ ...formData, divisao: e.target.value })}
-                  placeholder="Ex: Norte"
-                />
-              </div>
-            </div>
-
-            {/* Row 5: Categoria + Posição */}
+            {/* Row 4: Categoria + Divisão */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Categoria</Label>
-                <Input
+                <Select
                   value={formData.categoria}
-                  onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
-                  placeholder="Ex: Técnico Superior"
-                />
+                  onValueChange={(value) => setFormData({ ...formData, categoria: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categoriaOptions.map((opt) => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <Label>Posição</Label>
-                <Input
-                  value={formData.posicao}
-                  onChange={(e) => setFormData({ ...formData, posicao: e.target.value })}
-                  placeholder="Ex: Operador"
-                />
+                <Label>Divisão</Label>
+                <Select
+                  value={formData.divisao}
+                  onValueChange={(value) => setFormData({ ...formData, divisao: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {divisaoOptions.map((opt) => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
-            {/* Row 6: Gabinetes + Serviços */}
+            {/* Row 5: Departamento + Gabinetes */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Gabinetes</Label>
-                <Input
-                  value={formData.gabinetes}
-                  onChange={(e) => setFormData({ ...formData, gabinetes: e.target.value })}
-                  placeholder="Ex: Gabinete A"
-                />
+                <Label>Departamento</Label>
+                <Select
+                  value={formData.departamento}
+                  onValueChange={(value) => setFormData({ ...formData, departamento: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departamentoOptions.map((opt) => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <Label>Serviços</Label>
-                <Input
-                  value={formData.servicos}
-                  onChange={(e) => setFormData({ ...formData, servicos: e.target.value })}
-                  placeholder="Ex: Manutenção"
-                />
+                <Label>Gabinetes</Label>
+                <Select
+                  value={formData.gabinetes}
+                  onValueChange={(value) => setFormData({ ...formData, gabinetes: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {gabinetesOptions.map((opt) => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+            </div>
+
+            {/* Row 6: Serviços */}
+            <div className="space-y-2">
+              <Label>Serviços</Label>
+              <Select
+                value={formData.servicos}
+                onValueChange={(value) => setFormData({ ...formData, servicos: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {servicosOptions.map((opt) => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Row 7: Admissão + Último Exame */}
