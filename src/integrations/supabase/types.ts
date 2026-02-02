@@ -268,7 +268,6 @@ export type Database = {
           id: string
           nome_completo: string
           numero_funcionario: string
-          posicao: string | null
           servicos: string | null
           telefone: string | null
           ultimo_exame: string | null
@@ -286,7 +285,6 @@ export type Database = {
           id?: string
           nome_completo: string
           numero_funcionario: string
-          posicao?: string | null
           servicos?: string | null
           telefone?: string | null
           ultimo_exame?: string | null
@@ -304,7 +302,6 @@ export type Database = {
           id?: string
           nome_completo?: string
           numero_funcionario?: string
-          posicao?: string | null
           servicos?: string | null
           telefone?: string | null
           ultimo_exame?: string | null

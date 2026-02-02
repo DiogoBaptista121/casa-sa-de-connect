@@ -71,6 +71,47 @@ export interface Consulta {
   servico?: Servico;
 }
 
+// Dropdown options for FuncionarioMT
+export const categoriaOptions = [
+  'Assistente Operacional',
+  'Assistente Técnico',
+  'Técnico Superior',
+  'Chefe de Divisão',
+  'Chefe de Departamento',
+  'Chefe de Gabinete',
+] as const;
+
+export const divisaoOptions = [
+  'Divisão de Recursos Humanos e Apoio à Gestão',
+  'Divisão Financeira',
+  'Divisão de Educação, Saúde e Ação Social',
+  'Divisão de Cultura e Património Cultural',
+  'Divisão de Ordenamento e Desenvolvimento Urbano',
+  'Divisão de Intervenção no Território e Ambiente',
+  'Divisão Economica, Turismo e Património Natural',
+] as const;
+
+export const departamentoOptions = [
+  'Departamento de Gestão e Desenvolvimento Humano e Social',
+  'Departamento de Ambiente, Território, Economia e Patrímonio Natural',
+] as const;
+
+export const gabinetesOptions = [
+  'Gabinete de Apoio ao Município',
+  'Gabinete de Gestão Infantil',
+  'Gabinete de Saúde e Ação Social Integrada',
+  'Gabinete Juridico e Gestão Património',
+  'Gabinete de Inovação, Informação e Comunicação',
+  'Gabinete de Apoio às Migrações e Interculturalidade',
+  'Gabinete de Gestão de Frotas',
+  'Gabinete de Apoio à Presidencia e à Vereação',
+] as const;
+
+export const servicosOptions = [
+  'Serviçoes Municipais e Proteção Cívil',
+  'Serviços Médicos - Veterinário Municipal',
+] as const;
+
 export interface FuncionarioMT {
   id: string;
   numero_funcionario: string;
@@ -78,7 +119,6 @@ export interface FuncionarioMT {
   telefone: string | null;
   data_nascimento: string | null;
   departamento: string | null;
-  posicao: string | null;
   categoria: string | null;
   divisao: string | null;
   gabinetes: string | null;
