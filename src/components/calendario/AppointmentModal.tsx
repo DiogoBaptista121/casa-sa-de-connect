@@ -409,7 +409,7 @@ export function AppointmentModal({
                         className="w-full justify-between font-normal"
                       >
                         {selectedFuncionario
-                          ? `${selectedFuncionario.nome} (${selectedFuncionario.numero_funcionario})`
+                          ? `${selectedFuncionario.nome_completo} (${selectedFuncionario.numero_funcionario})`
                           : 'Selecione um funcionário...'}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
@@ -423,7 +423,7 @@ export function AppointmentModal({
                             {funcionarios.map((f) => (
                               <CommandItem
                                 key={f.id}
-                                value={`${f.nome} ${f.numero_funcionario}`}
+                                value={`${f.nome_completo} ${f.numero_funcionario}`}
                                 onSelect={() => {
                                   setFormData({ ...formData, funcionario_id: f.id });
                                   setFuncionarioOpen(false);
@@ -438,7 +438,7 @@ export function AppointmentModal({
                                   )}
                                 />
                                 <div>
-                                  <p>{f.nome}</p>
+                                  <p>{f.nome_completo}</p>
                                   <p className="text-xs text-muted-foreground">
                                     {f.numero_funcionario}
                                     {f.departamento && ` • ${f.departamento}`}
