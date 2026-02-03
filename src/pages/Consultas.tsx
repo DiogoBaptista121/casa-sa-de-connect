@@ -108,7 +108,7 @@ export default function ConsultasPage() {
         .from('consultas')
         .select(`
           *,
-          cartao_saude:cartao_saude_id (id, nome, numero_cartao),
+          cartao_saude:cartao_saude_id (id, nome_completo, numero_cartao, nif),
           servico:servico_id (id, nome, cor)
         `)
         .order('data', { ascending: false })
@@ -117,7 +117,7 @@ export default function ConsultasPage() {
         .from('cartao_saude')
         .select('*')
         .eq('estado', 'ativo')
-        .order('nome'),
+        .order('nome_completo'),
       supabase
         .from('servicos')
         .select('*')
@@ -140,12 +140,13 @@ export default function ConsultasPage() {
 
   const filteredConsultas = consultas.filter((c) => {
     const cartao = c.cartao_saude as any;
-    const servico = c.servico as any;
     
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      if (!cartao?.nome?.toLowerCase().includes(term) &&
-          !cartao?.numero_cartao?.toLowerCase().includes(term)) {
+      const nomeMatch = cartao?.nome_completo?.toLowerCase().includes(term);
+      const cartaoMatch = cartao?.numero_cartao?.toLowerCase().includes(term);
+      const nifMatch = cartao?.nif?.toLowerCase().includes(term);
+      if (!nomeMatch && !cartaoMatch && !nifMatch) {
         return false;
       }
     }
@@ -274,7 +275,8 @@ export default function ConsultasPage() {
     const exportData = filteredConsultas.map((c) => ({
       'Data': c.data,
       'Hora': c.hora.substring(0, 5),
-      'Paciente': (c.cartao_saude as any)?.nome || '',
+      'Paciente': (c.cartao_saude as any)?.nome_completo || '',
+      'NIF': (c.cartao_saude as any)?.nif || '',
       'Nº Cartão': (c.cartao_saude as any)?.numero_cartao || '',
       'Serviço': (c.servico as any)?.nome || '',
       'Origem': c.origem === 'casa_saude' ? 'Casa de Saúde' : 'Unidade Móvel',
@@ -314,8 +316,8 @@ export default function ConsultasPage() {
         const cartao = item.cartao_saude as any;
         return (
           <div>
-            <p className="font-medium">{cartao?.nome}</p>
-            <p className="text-sm text-muted-foreground">{cartao?.numero_cartao}</p>
+            <p className="font-medium">{cartao?.nome_completo}</p>
+            <p className="text-sm text-muted-foreground">NIF: {cartao?.nif} | Cartão: {cartao?.numero_cartao}</p>
           </div>
         );
       },
@@ -396,7 +398,7 @@ export default function ConsultasPage() {
         <div className="relative lg:col-span-2">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Pesquisar paciente..."
+            placeholder="Pesquisar por nome, NIF ou nº cartão..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
