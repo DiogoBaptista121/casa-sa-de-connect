@@ -250,6 +250,13 @@ export type Database = {
             foreignKeyName: "consultas_mt_funcionario_id_fkey"
             columns: ["funcionario_id"]
             isOneToOne: false
+            referencedRelation: "funcionarios_mt_ficha_vw"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consultas_mt_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
             referencedRelation: "funcionarios_mt_vw"
             referencedColumns: ["id"]
           },
@@ -395,6 +402,104 @@ export type Database = {
       }
     }
     Views: {
+      consultas_mt_ficha_vw: {
+        Row: {
+          consulta_id: string | null
+          created_at: string | null
+          data_consulta: string | null
+          funcionario_id: string | null
+          hora_consulta: string | null
+          idade: number | null
+          nome_completo: string | null
+          notas: string | null
+          numero_funcionario: string | null
+          resultado: string | null
+          status: Database["public"]["Enums"]["consulta_status"] | null
+          telefone: string | null
+          tipo_exame: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultas_mt_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios_mt"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consultas_mt_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios_mt_ficha_vw"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consultas_mt_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios_mt_vw"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      funcionarios_mt_ficha_vw: {
+        Row: {
+          admissao: string | null
+          categoria: string | null
+          created_at: string | null
+          data_nascimento: string | null
+          departamento: string | null
+          divisao: string | null
+          estado: Database["public"]["Enums"]["estado_registo"] | null
+          gabinetes: string | null
+          id: string | null
+          idade: number | null
+          nome_completo: string | null
+          numero_funcionario: string | null
+          servicos: string | null
+          telefone: string | null
+          ultimo_exame: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          admissao?: string | null
+          categoria?: string | null
+          created_at?: string | null
+          data_nascimento?: string | null
+          departamento?: string | null
+          divisao?: string | null
+          estado?: Database["public"]["Enums"]["estado_registo"] | null
+          gabinetes?: string | null
+          id?: string | null
+          idade?: never
+          nome_completo?: string | null
+          numero_funcionario?: string | null
+          servicos?: string | null
+          telefone?: string | null
+          ultimo_exame?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          admissao?: string | null
+          categoria?: string | null
+          created_at?: string | null
+          data_nascimento?: string | null
+          departamento?: string | null
+          divisao?: string | null
+          estado?: Database["public"]["Enums"]["estado_registo"] | null
+          gabinetes?: string | null
+          id?: string | null
+          idade?: never
+          nome_completo?: string | null
+          numero_funcionario?: string | null
+          servicos?: string | null
+          telefone?: string | null
+          ultimo_exame?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       funcionarios_mt_vw: {
         Row: {
           admissao: string | null
@@ -454,6 +559,17 @@ export type Database = {
       }
     }
     Functions: {
+      get_funcionario_mt_por_numero: {
+        Args: { p_numero: string }
+        Returns: {
+          data_nascimento: string
+          funcionario_id: string
+          idade: number
+          nome_completo: string
+          numero_funcionario: string
+          telefone: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

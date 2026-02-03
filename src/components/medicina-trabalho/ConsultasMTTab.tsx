@@ -101,25 +101,44 @@ export function ConsultasMTTab() {
     
     const [consultasRes, funcionariosRes] = await Promise.all([
       supabase
-        .from('consultas_mt')
-        .select(`
-          *,
-          funcionario:funcionario_id (id, nome, numero_funcionario, departamento)
-        `)
-        .order('data', { ascending: false })
-        .order('hora', { ascending: true }),
+        .from('consultas_mt_ficha_vw')
+        .select('*')
+        .order('data_consulta', { ascending: false })
+        .order('hora_consulta', { ascending: true }),
       supabase
         .from('funcionarios_mt')
         .select('*')
         .eq('estado', 'ativo')
-        .order('nome'),
+        .order('nome_completo'),
     ]);
 
     if (consultasRes.error) {
-      console.error('Error fetching consultas_mt:', consultasRes.error);
+      console.error('Error fetching consultas_mt_ficha_vw:', consultasRes.error);
       toast.error('Erro ao carregar consultas MT');
     } else {
-      setConsultas(consultasRes.data as unknown as ConsultaMT[]);
+      // Map view data to ConsultaMT format for compatibility
+      const mappedData = consultasRes.data.map((row: any) => ({
+        id: row.consulta_id,
+        funcionario_id: row.funcionario_id,
+        data: row.data_consulta,
+        hora: row.hora_consulta,
+        tipo_exame: row.tipo_exame,
+        status: row.status,
+        resultado: row.resultado,
+        notas: row.notas,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        created_by: null,
+        // Embed funcionario info for display
+        funcionario: {
+          id: row.funcionario_id,
+          nome_completo: row.nome_completo,
+          numero_funcionario: row.numero_funcionario,
+          telefone: row.telefone,
+          idade: row.idade,
+        },
+      }));
+      setConsultas(mappedData as unknown as ConsultaMT[]);
     }
 
     if (funcionariosRes.data) setFuncionarios(funcionariosRes.data as FuncionarioMT[]);
@@ -357,27 +376,30 @@ export function ConsultasMTTab() {
 
   const columns: Column<ConsultaMT>[] = [
     {
-      key: 'data',
-      header: 'Data/Hora',
-      cell: (item) => (
-        <div>
-          <p className="font-medium">{formatData(item.data)}</p>
-          <p className="text-sm text-muted-foreground">{item.hora.substring(0, 5)}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'funcionario',
-      header: 'Funcionário',
+      key: 'numero_funcionario',
+      header: 'Nº Funcionário',
       cell: (item) => {
         const funcionario = item.funcionario as any;
-        return (
-          <div>
-            <p className="font-medium">{funcionario?.nome}</p>
-            <p className="text-sm text-muted-foreground">{funcionario?.numero_funcionario}</p>
-          </div>
-        );
+        return funcionario?.numero_funcionario || '-';
       },
+    },
+    {
+      key: 'nome_completo',
+      header: 'Nome Completo',
+      cell: (item) => {
+        const funcionario = item.funcionario as any;
+        return funcionario?.nome_completo || '-';
+      },
+    },
+    {
+      key: 'data',
+      header: 'Data',
+      cell: (item) => formatData(item.data),
+    },
+    {
+      key: 'hora',
+      header: 'Hora',
+      cell: (item) => item.hora?.substring(0, 5) || '-',
     },
     {
       key: 'tipo_exame',
@@ -410,6 +432,19 @@ export function ConsultasMTTab() {
           )}
         </div>
       ),
+    },
+    {
+      key: 'resultado',
+      header: 'Resultado',
+      cell: (item) => {
+        const resultadoLabels: Record<string, string> = {
+          'apto': 'Apto',
+          'inapto': 'Inapto',
+          'apto_com_restricao': 'Apto c/ Restrição',
+          'pendente': 'Pendente',
+        };
+        return item.resultado ? resultadoLabels[item.resultado] || item.resultado : '-';
+      },
     },
     {
       key: 'actions',
