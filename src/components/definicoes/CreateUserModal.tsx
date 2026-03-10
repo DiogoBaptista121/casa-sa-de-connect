@@ -53,48 +53,21 @@ export function CreateUserModal({ open, onOpenChange, onSuccess }: CreateUserMod
         setLoading(true);
 
         try {
-            // Step 1: Create user in Supabase Auth
-            // The handle_new_user trigger auto-creates profile + assigns 'viewer' role.
-            // We send 'nome' in user_metadata so the trigger can use it.
-            const { data: authData, error: authError } = await supabase.auth.signUp({
-                email: email.trim().toLowerCase(),
-                password,
-                options: {
-                    data: { nome: nome.trim() },
-                    emailRedirectTo: undefined,
-                },
+            // Step 1: Create user directly via Admin RPC (bypasses "Signups not allowed")
+            // This function handlesauth.users, auth.identities, roles, and profiles atomically.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { data: createdUserId, error: authError } = await (supabase.rpc as any)('admin_create_user', {
+                email_str: email.trim().toLowerCase(),
+                password_str: password,
+                nome_str: nome.trim(),
+                role_str: role
             });
 
             if (authError) throw new Error(authError.message);
-            if (!authData.user) throw new Error('Utilizador não foi criado');
+            if (!createdUserId) throw new Error('Utilizador não foi criado corretamente.');
 
-            const createdUserId = authData.user.id;
-
-            // Step 2: Wait briefly for the trigger to run, then update via SECURITY DEFINER RPCs
-            // These bypass RLS entirely, so they always work regardless of policy state.
+            // Wait briefly for the UI to be ready to fetch
             await new Promise(resolve => setTimeout(resolve, 800));
-
-            // Update profile name (trigger may have used email prefix instead)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { error: profileError } = await (supabase.rpc as any)('update_user_profile', {
-                _target_user_id: createdUserId,
-                _new_nome: nome.trim(),
-            });
-            if (profileError) {
-                console.warn('[CreateUser] Profile update warning:', profileError.message);
-            }
-
-            // Update role if not the default 'viewer'
-            if (role !== 'viewer') {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const { error: roleError } = await (supabase.rpc as any)('update_user_role', {
-                    _target_user_id: createdUserId,
-                    _new_role: role,
-                });
-                if (roleError) {
-                    console.warn('[CreateUser] Role update warning:', roleError.message);
-                }
-            }
 
             toast({
                 title: 'Utilizador criado com sucesso',

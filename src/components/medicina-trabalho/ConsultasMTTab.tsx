@@ -88,7 +88,10 @@ interface ConsultaMTRow {
 // Component
 // -------------------------------------------------------------------
 export function ConsultasMTTab() {
-  const { canEdit, user } = useAuth();
+  const { canEdit, role, user } = useAuth();
+  const isViewer = role === 'viewer';
+  const canManageBulk = role === 'admin' || role === 'manager';
+  const hasEditAccess = canEdit && !isViewer;
   const { isSuperAdmin } = useSuperAdmin();
   const [loading, setLoading] = useState(true);
   const [consultas, setConsultas] = useState<ConsultaMTRow[]>([]);
@@ -108,6 +111,12 @@ export function ConsultasMTTab() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingConsulta, setDeletingConsulta] = useState<ConsultaMTRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // Combobox
   const [funcionarioOpen, setFuncionarioOpen] = useState(false);
@@ -330,6 +339,28 @@ export function ConsultasMTTab() {
   };
 
   // ----------------------------------------------------------------
+  // Bulk Delete
+  // ----------------------------------------------------------------
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    setBulkDeleting(true);
+    const { error } = await supabase
+      .from('consultas_mt' as any)
+      .delete()
+      .in('id', selectedIds as any);
+
+    if (error) {
+      toast.error('Erro ao eliminar consultas: ' + error.message);
+    } else {
+      toast.success(`${selectedIds.length} consulta(s) eliminada(s) com sucesso`);
+      setSelectedIds([]);
+      setBulkDeleteDialogOpen(false);
+      fetchData();
+    }
+    setBulkDeleting(false);
+  };
+
+  // ----------------------------------------------------------------
   // Quick status change
   // ----------------------------------------------------------------
   const handleQuickStatusChange = async (consulta: ConsultaMTRow, newStatus: ConsultaStatus) => {
@@ -448,10 +479,22 @@ export function ConsultasMTTab() {
 
   const selectedFuncionario = funcionarios.find((f) => f.id === formData.funcionario_id);
 
+  // Page-level select-all (filtered list)
+  const allFilteredIds = filteredConsultas.map((c) => c.id);
+  const allSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.includes(id));
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !allFilteredIds.includes(id)));
+    } else {
+      setSelectedIds((prev) => [...new Set([...prev, ...allFilteredIds])]);
+    }
+  };
+
   // ----------------------------------------------------------------
   // Table columns
   // ----------------------------------------------------------------
-  const columns: Column<ConsultaMTRow>[] = [
+  const baseColumns: Column<ConsultaMTRow>[] = [
     {
       key: 'numero_funcionario',
       header: 'Nº Funcionário',
@@ -482,7 +525,7 @@ export function ConsultasMTTab() {
       header: 'Status',
       cell: (item) => (
         <div className="flex items-center gap-2">
-          {canEdit ? (
+          {hasEditAccess ? (
             <Select
               value={item.status}
               onValueChange={(value) => handleQuickStatusChange(item, value as ConsultaStatus)}
@@ -525,7 +568,7 @@ export function ConsultasMTTab() {
       header: '',
       cell: (item) => (
         <div className="flex items-center gap-1">
-          {canEdit && (
+          {hasEditAccess && (
             <Button
               variant="ghost"
               size="icon"
@@ -537,7 +580,7 @@ export function ConsultasMTTab() {
               <Edit2 className="w-4 h-4" />
             </Button>
           )}
-          {isSuperAdmin && (
+          {hasEditAccess && (
             <Button
               variant="ghost"
               size="icon"
@@ -552,9 +595,39 @@ export function ConsultasMTTab() {
           )}
         </div>
       ),
-      className: 'w-20',
+      className: 'w-16',
     },
   ];
+
+  const checkboxColumn: Column<ConsultaMTRow> = {
+    key: 'select' as any,
+    header: (
+      <input
+        type="checkbox"
+        checked={allSelected}
+        onChange={toggleSelectAll}
+        className="h-4 w-4 rounded border-gray-300"
+        aria-label="Selecionar todos"
+      />
+    ) as any,
+    cell: (item) => (
+      <input
+        type="checkbox"
+        checked={selectedIds.includes(item.id)}
+        onChange={(e) => {
+          e.stopPropagation();
+          setSelectedIds((prev) =>
+            e.target.checked ? [...prev, item.id] : prev.filter((id) => id !== item.id)
+          );
+        }}
+        onClick={(e) => e.stopPropagation()}
+        className="h-4 w-4 rounded border-gray-300"
+      />
+    ),
+    className: 'w-10',
+  };
+
+  const columns = !canManageBulk ? baseColumns : [checkboxColumn, ...baseColumns];
 
   // ----------------------------------------------------------------
   // Render
@@ -592,19 +665,34 @@ export function ConsultasMTTab() {
               <SelectItem value="falta">Falta</SelectItem>
             </SelectContent>
           </Select>
+          {isSuperAdmin && selectedIds.length > 0 && !isViewer && (
+            <Button
+              variant="destructive"
+              size="sm"
+              className="gap-1.5 h-8 text-xs shrink-0"
+              onClick={() => setBulkDeleteDialogOpen(true)}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Eliminar ({selectedIds.length})
+            </Button>
+          )}
         </div>
 
-        {canEdit && (
+        {hasEditAccess && (
           <div className="flex gap-2 shrink-0">
-            <label className="cursor-pointer">
-              <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImport} className="hidden" />
-              <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" asChild>
-                <span><FileUp className="w-3.5 h-3.5" />Importar</span>
-              </Button>
-            </label>
-            <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5 h-8 text-xs">
-              <FileDown className="w-3.5 h-3.5" />Exportar
-            </Button>
+            {canManageBulk && (
+              <>
+                <label className="cursor-pointer">
+                  <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImport} className="hidden" />
+                  <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" asChild>
+                    <span><FileUp className="w-3.5 h-3.5" />Importar</span>
+                  </Button>
+                </label>
+                <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5 h-8 text-xs">
+                  <FileDown className="w-3.5 h-3.5" />Exportar
+                </Button>
+              </>
+            )}
             <Button size="sm" onClick={openCreateModal} className="gap-1.5 h-8 text-xs">
               <Plus className="w-3.5 h-3.5" />Nova Consulta MT
             </Button>
@@ -619,14 +707,19 @@ export function ConsultasMTTab() {
         loading={loading}
         emptyTitle="Sem consultas MT"
         emptyDescription="Ainda não existem consultas de medicina do trabalho."
-        onRowClick={canEdit ? openEditModal : undefined}
+        onRowClick={hasEditAccess ? openEditModal : undefined}
       />
 
       {/* Count footer */}
       {!loading && (
-        <div className="shrink-0 flex items-center px-1 py-1.5 text-xs text-muted-foreground border-t border-slate-100">
-          A mostrar <span className="font-semibold text-foreground mx-1">{filteredConsultas.length}</span> de{' '}
-          <span className="font-semibold text-foreground mx-1">{consultas.length}</span> consultas MT
+        <div className="shrink-0 flex items-center justify-between px-1 py-1.5 text-xs text-muted-foreground border-t border-slate-100">
+          <span>
+            A mostrar <span className="font-semibold text-foreground mx-1">{filteredConsultas.length}</span> de{' '}
+            <span className="font-semibold text-foreground mx-1">{consultas.length}</span> consultas MT
+          </span>
+          {selectedIds.length > 0 && !isViewer && (
+            <span className="text-primary font-medium">{selectedIds.length} selecionada(s)</span>
+          )}
         </div>
       )}
 

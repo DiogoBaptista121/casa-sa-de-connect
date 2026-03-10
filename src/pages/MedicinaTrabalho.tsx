@@ -1,10 +1,20 @@
 import { PageHeader } from '@/components/ui/page-header';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Stethoscope } from 'lucide-react';
+import { useSearchParams, Navigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+
 import { FuncionariosTab } from '@/components/medicina-trabalho/FuncionariosTab';
 import { ConsultasMTTab } from '@/components/medicina-trabalho/ConsultasMTTab';
 
 export default function MedicinaTrabalhoPage() {
+  const [searchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'funcionarios';
+
+  const { role } = useAuth();
+  if (role !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
+
+
   return (
     <div className="page-enter flex flex-col h-full gap-3 max-w-7xl mx-auto w-full p-4">
       <PageHeader
@@ -12,26 +22,9 @@ export default function MedicinaTrabalhoPage() {
         description="Gestão de funcionários e consultas de medicina do trabalho"
       />
 
-      <Tabs defaultValue="funcionarios" className="flex flex-col flex-1 overflow-hidden">
-        <TabsList className="shrink-0">
-          <TabsTrigger value="funcionarios" className="gap-2">
-            <Users className="w-4 h-4" />
-            Funcionários
-          </TabsTrigger>
-          <TabsTrigger value="consultas" className="gap-2">
-            <Stethoscope className="w-4 h-4" />
-            Consultas MT
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="funcionarios" className="flex-1 overflow-hidden mt-2">
-          <FuncionariosTab />
-        </TabsContent>
-
-        <TabsContent value="consultas" className="flex-1 overflow-hidden mt-2">
-          <ConsultasMTTab />
-        </TabsContent>
-      </Tabs>
+      <div className="flex-1 overflow-hidden flex flex-col mt-2">
+        {activeTab === 'consultas' ? <ConsultasMTTab /> : <FuncionariosTab />}
+      </div>
     </div>
   );
 }

@@ -49,7 +49,7 @@ interface ConsultaRow extends ConsultaCSFichaView { }
 
 export default function ConsultasPage() {
   const { canEdit } = useAuth();
-  const { isSuperAdmin } = useSuperAdmin();
+
   const [loading, setLoading] = useState(true);
   const [consultas, setConsultas] = useState<ConsultaRow[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
@@ -448,7 +448,12 @@ export default function ConsultasPage() {
       .eq('id', deletingConsulta.consulta_id);
 
     if (error) {
-      toast.error('Erro ao eliminar consulta: ' + error.message);
+      console.error('Error deleting consulta:', error);
+      if (error.code === '42501') {
+        toast.error('Não tem permissão para eliminar esta consulta no servidor.');
+      } else {
+        toast.error('Erro ao eliminar consulta: ' + error.message);
+      }
     } else {
       toast.success('Consulta eliminada com sucesso');
       setDeleteDialogOpen(false);
@@ -490,7 +495,12 @@ export default function ConsultasPage() {
       .delete()
       .in('id', selectedIds as any);
     if (error) {
-      toast.error('Erro ao eliminar consultas: ' + error.message);
+      console.error('Error bulk deleting consultas:', error);
+      if (error.code === '42501') {
+        toast.error('Não tem permissão para eliminar uma ou mais consultas selecionadas.');
+      } else {
+        toast.error('Erro ao eliminar consultas: ' + error.message);
+      }
     } else {
       toast.success(`${selectedIds.length} consulta(s) eliminada(s)`);
       setSelectedIds([]);
@@ -522,8 +532,10 @@ export default function ConsultasPage() {
   // ------------------------------------------------------------------
   // Table columns
   // ------------------------------------------------------------------
-  const columns: Column<ConsultaRow>[] = [
-    {
+  const columns: Column<ConsultaRow>[] = [];
+
+  if (canEdit) {
+    columns.push({
       key: 'select' as any,
       header: (
         <input
@@ -549,7 +561,10 @@ export default function ConsultasPage() {
         />
       ),
       className: 'w-10',
-    },
+    });
+  }
+
+  columns.push(
     {
       key: 'data',
       header: 'Data/Hora',
@@ -598,24 +613,24 @@ export default function ConsultasPage() {
       cell: (item) => (
         <div className="flex items-center gap-1">
           {canEdit && (
-            <Button variant="ghost" size="icon" className="h-7 w-7"
-              onClick={(e) => { e.stopPropagation(); openEditModal(item); }}
-            >
-              <Edit2 className="w-3.5 h-3.5" />
-            </Button>
-          )}
-          {isSuperAdmin && (
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
-              onClick={(e) => { e.stopPropagation(); openDeleteDialog(item); }}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
+            <>
+              <Button variant="ghost" size="icon" className="h-7 w-7"
+                onClick={(e) => { e.stopPropagation(); openEditModal(item); }}
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+                onClick={(e) => { e.stopPropagation(); openDeleteDialog(item); }}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            </>
           )}
         </div>
       ),
       className: 'w-16',
-    },
-  ];
+    }
+  );
 
   const isEditing = !!editingConsulta;
 
@@ -681,7 +696,7 @@ export default function ConsultasPage() {
               <SelectItem value="status">Status</SelectItem>
             </SelectContent>
           </Select>
-          {isSuperAdmin && selectedIds.length > 0 && (
+          {canEdit && selectedIds.length > 0 && (
             <Button
               variant="destructive"
               size="sm"

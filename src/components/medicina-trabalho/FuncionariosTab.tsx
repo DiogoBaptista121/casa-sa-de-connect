@@ -65,7 +65,10 @@ function ExamStatusBadge({ ultimoExame, dataNasc }: { ultimoExame: string | null
 
 
 export function FuncionariosTab() {
-  const { canEdit } = useAuth();
+  const { canEdit, role } = useAuth();
+  const isViewer = role === 'viewer';
+  const canManageBulk = role === 'admin' || role === 'manager';
+  const hasEditAccess = canEdit && !isViewer;
   const { isSuperAdmin } = useSuperAdmin();
   const [loading, setLoading] = useState(true);
   const [funcionarios, setFuncionarios] = useState<FuncionarioMT[]>([]);
@@ -545,7 +548,7 @@ export function FuncionariosTab() {
       header: '',
       cell: (item) => (
         <div className="flex items-center gap-1">
-          {canEdit && (
+          {hasEditAccess && (
             <Button variant="ghost" size="icon" className="h-7 w-7"
               onClick={(e) => { e.stopPropagation(); openEditModal(item); }}
             >
@@ -630,7 +633,7 @@ export function FuncionariosTab() {
             )}
           </div>
 
-          {canEdit && (
+          {hasEditAccess && (
             <div className="flex gap-2 shrink-0">
               <label className="cursor-pointer">
                 <input
@@ -666,7 +669,7 @@ export function FuncionariosTab() {
             loading={loading}
             emptyTitle="Sem funcionários"
             emptyDescription="Ainda não existem funcionários registados."
-            onRowClick={canEdit ? openEditModal : undefined}
+            onRowClick={hasEditAccess ? openEditModal : undefined}
           />
         </div>
 

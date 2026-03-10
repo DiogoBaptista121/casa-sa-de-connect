@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSuperAdmin } from '@/hooks/use-super-admin';
+import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/ui/page-header';
 import { DataTable, Column } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,8 @@ import {
   Loader2,
   CreditCard,
   Trash2,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { CartaoSaude, DocumentoTipo, EstadoEntrega } from '@/types/database';
@@ -78,6 +81,7 @@ const estadoEntregaLabelsMap: Record<EstadoEntrega, string> = {
   NAO_ENTREGUE: 'Não Entregue',
   PENDENTE: 'Pendente',
   CANCELADO: 'Cancelado',
+  AGUARDAR_VALIDACAO: 'Aguardar Validação',
 };
 
 const estadoEntregaColorsMap: Record<EstadoEntrega, string> = {
@@ -85,6 +89,7 @@ const estadoEntregaColorsMap: Record<EstadoEntrega, string> = {
   NAO_ENTREGUE: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
   PENDENTE: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
   CANCELADO: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+  AGUARDAR_VALIDACAO: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
 };
 
 const formatDate = (d: string | null) => {
@@ -101,7 +106,8 @@ const formatDate = (d: string | null) => {
 // Page component
 // -------------------------------------------------------------------
 export default function CartaoSaudePage() {
-  const { canEdit } = useAuth();
+  const { canEdit, role } = useAuth();
+  const canManageBulk = role === 'admin' || role === 'manager';
   const { isSuperAdmin } = useSuperAdmin();
   const [loading, setLoading] = useState(true);
   const [cartoes, setCartoes] = useState<CartaoSaude[]>([]);
@@ -133,7 +139,8 @@ export default function CartaoSaudePage() {
   const [currentPage, setCurrentPage] = useState(0);   // 0-indexed
   const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
-  const [estadoEntregaFilter, setEstadoEntregaFilter] = useState<string>('todos');
+  const [searchParams] = useSearchParams();
+  const [estadoEntregaFilter, setEstadoEntregaFilter] = useState<string>(searchParams.get('filter') === 'validacao' ? 'AGUARDAR_VALIDACAO' : 'todos');
   const [sortBy, setSortBy] = useState<string>('numero_asc');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -301,6 +308,8 @@ export default function CartaoSaudePage() {
       estado_entrega: formData.estado_entrega,
     };
 
+    console.log('[DEBUG] Guardar Cartão - Payload a enviar:', payload);
+
     if (editingCartao) {
       // On UPDATE, do NOT change the NIF (unique key)
       const { nif: _nif, ...updatePayload } = payload;
@@ -315,7 +324,7 @@ export default function CartaoSaudePage() {
       } else {
         toast.success('Cartão atualizado com sucesso');
         setModalOpen(false);
-        refreshPage();
+        setTimeout(() => refreshPage(), 100);
       }
     } else {
       // INSERT — numero_cartao is NOT included; the DB trigger generates it automatically
@@ -333,7 +342,7 @@ export default function CartaoSaudePage() {
       } else {
         toast.success('Cartão de saúde criado com sucesso');
         setModalOpen(false);
-        refreshPage();
+        setTimeout(() => refreshPage(), 100);
       }
     }
 
@@ -575,27 +584,8 @@ export default function CartaoSaudePage() {
     );
   };
 
-  const columns: Column<CartaoSaude>[] = [
-    {
-      key: 'select' as any,
-      header: (
-        <Checkbox
-          checked={allCurrentPageSelected}
-          onCheckedChange={toggleSelectAll}
-          aria-label="Selecionar todos"
-          onClick={(e) => e.stopPropagation()}
-        />
-      ) as any,
-      cell: (item) => (
-        <Checkbox
-          checked={selectedIds.includes(item.id)}
-          onCheckedChange={() => toggleSelectRow(item.id)}
-          aria-label="Selecionar linha"
-          onClick={(e) => e.stopPropagation()}
-        />
-      ),
-      className: 'w-10',
-    },
+  const baseColumns: Column<CartaoSaude>[] = [
+
     {
       key: 'numero_cartao',
       header: 'Nº Cartão',
@@ -675,6 +665,29 @@ export default function CartaoSaudePage() {
       className: 'w-20',
     },
   ];
+  const checkboxColumn: Column<CartaoSaude> = {
+    key: 'select' as any,
+    header: (
+      <Checkbox
+        checked={allCurrentPageSelected}
+        onCheckedChange={toggleSelectAll}
+        aria-label="Selecionar todos"
+        onClick={(e) => e.stopPropagation()}
+      />
+    ) as any,
+    cell: (item) => (
+      <Checkbox
+        checked={selectedIds.includes(item.id)}
+        onCheckedChange={() => toggleSelectRow(item.id)}
+        aria-label="Selecionar linha"
+        onClick={(e) => e.stopPropagation()}
+      />
+    ),
+    className: 'w-10',
+  };
+
+  const columns = canManageBulk ? [checkboxColumn, ...baseColumns] : baseColumns;
+
 
   // ----------------------------------------------------------------
   // Render
@@ -687,24 +700,28 @@ export default function CartaoSaudePage() {
       >
         {canEdit && (
           <>
-            <label className="cursor-pointer">
-              <input
-                type="file"
-                accept=".csv, .xlsx"
-                onChange={handleImport}
-                className="hidden"
-              />
-              <Button variant="outline" className="gap-2" asChild>
-                <span>
-                  <FileUp className="w-4 h-4" />
-                  Importar
-                </span>
-              </Button>
-            </label>
-            <Button variant="outline" onClick={handleExport} className="gap-2">
-              <FileDown className="w-4 h-4" />
-              Exportar
-            </Button>
+            {canManageBulk && (
+              <>
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept=".csv, .xlsx"
+                    onChange={handleImport}
+                    className="hidden"
+                  />
+                  <Button variant="outline" className="gap-2" asChild>
+                    <span>
+                      <FileUp className="w-4 h-4" />
+                      Importar
+                    </span>
+                  </Button>
+                </label>
+                <Button variant="outline" onClick={handleExport} className="gap-2">
+                  <FileDown className="w-4 h-4" />
+                  Exportar
+                </Button>
+              </>
+            )}
             <Button onClick={openCreateModal} className="gap-2">
               <Plus className="w-4 h-4" />
               Novo Cartão
@@ -715,6 +732,15 @@ export default function CartaoSaudePage() {
 
       {/* Search + Filter bar */}
       <div className="flex flex-col sm:flex-row gap-3">
+        {(role === 'admin' || role === 'manager') && (
+          <Button
+            variant={estadoEntregaFilter === 'AGUARDAR_VALIDACAO' ? 'default' : 'outline'}
+            onClick={() => setEstadoEntregaFilter(f => f === 'AGUARDAR_VALIDACAO' ? 'todos' : 'AGUARDAR_VALIDACAO')}
+            className={estadoEntregaFilter === 'AGUARDAR_VALIDACAO' ? 'bg-blue-600 hover:bg-blue-700' : 'text-blue-600 border-blue-200 hover:bg-blue-50'}
+          >
+            Pedidos de Validação
+          </Button>
+        )}
         {/* Search — full width, prominent */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -886,7 +912,8 @@ export default function CartaoSaudePage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="PENDENTE">Pendente</SelectItem>
-                    <SelectItem value="ENTREGUE">Entregue</SelectItem>
+                    {role !== 'staff' && <SelectItem value="ENTREGUE">Entregue</SelectItem>}
+                    <SelectItem value="AGUARDAR_VALIDACAO">Aguardar Validação</SelectItem>
                     <SelectItem value="NAO_ENTREGUE">Não Entregue</SelectItem>
                     <SelectItem value="CANCELADO">Cancelado</SelectItem>
                   </SelectContent>
@@ -901,6 +928,7 @@ export default function CartaoSaudePage() {
                 value={formData.nome_completo}
                 onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
                 placeholder="Nome completo do aderente"
+                disabled={!!editingCartao && role === 'staff'}
                 className={formErrors.nome_completo ? 'border-destructive' : ''}
               />
               {formErrors.nome_completo && (
@@ -915,6 +943,7 @@ export default function CartaoSaudePage() {
                 type="date"
                 value={formData.data_nascimento}
                 onChange={(e) => setFormData({ ...formData, data_nascimento: e.target.value })}
+                disabled={!!editingCartao && role === 'staff'}
               />
             </div>
 
@@ -1010,6 +1039,36 @@ export default function CartaoSaudePage() {
           </div>
 
           <DialogFooter>
+            {(role === 'admin' || role === 'manager') && editingCartao?.estado_entrega === 'AGUARDAR_VALIDACAO' && (
+              <div className="flex items-center gap-2 mr-auto">
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    setSaving(true);
+                    const { error } = await supabase.from('cartao_saude').update({ estado_entrega: 'ENTREGUE' }).eq('id', editingCartao.id);
+                    setSaving(false);
+                    if (!error) { toast.success('Cartão validado e Entregue!'); setModalOpen(false); refreshPage(); }
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" /> Validar e Entregar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    setSaving(true);
+                    const { error } = await supabase.from('cartao_saude').update({ estado_entrega: 'PENDENTE' }).eq('id', editingCartao.id);
+                    setSaving(false);
+                    if (!error) { toast.info('Cartão devolvido para correção.'); setModalOpen(false); refreshPage(); }
+                  }}
+                  variant="outline"
+                  className="text-orange-600 border-orange-200 hover:bg-orange-50 gap-2"
+                >
+                  <XCircle className="w-4 h-4" /> Devolver (Pendente)
+                </Button>
+              </div>
+            )}
+
             <Button variant="outline" onClick={() => setModalOpen(false)}>
               Cancelar
             </Button>

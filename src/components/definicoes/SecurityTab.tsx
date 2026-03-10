@@ -35,16 +35,16 @@ export function SecurityTab() {
       toast({ title: 'Erro', description: 'O nome não pode estar vazio.', variant: 'destructive' });
       return;
     }
-    
+
     setSavingName(true);
     try {
       const { error } = await supabase
-        .from('perfis')
+        .from('profiles')
         .update({ nome: newName.trim() })
         .eq('id', profile.id);
-        
+
       if (error) throw error;
-      
+
       toast({ title: 'Nome atualizado', description: 'O seu nome foi atualizado com sucesso.' });
       setIsEditingName(false);
       // Idealmente, recarregaríamos o profile aqui ou usaríamos optimista
@@ -117,9 +117,9 @@ export function SecurityTab() {
               <Label className="text-muted-foreground">Nome</Label>
               {isEditingName ? (
                 <div className="flex items-center gap-2">
-                  <Input 
-                    value={newName} 
-                    onChange={(e) => setNewName(e.target.value)} 
+                  <Input
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
                     className="h-8 text-sm"
                   />
                   <Button size="sm" onClick={handleSaveName} disabled={savingName}>

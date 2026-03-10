@@ -5,7 +5,7 @@ export type ConsultaStatus = 'agendada' | 'confirmada' | 'concluida' | 'cancelad
 export type ConsultaOrigem = 'casa_saude' | 'unidade_movel';
 export type EstadoRegisto = 'ativo' | 'inativo';
 export type DocumentoTipo = 'CC' | 'BI';
-export type EstadoEntrega = 'ENTREGUE' | 'NAO_ENTREGUE' | 'PENDENTE' | 'CANCELADO';
+export type EstadoEntrega = 'ENTREGUE' | 'NAO_ENTREGUE' | 'PENDENTE' | 'CANCELADO' | 'AGUARDAR_VALIDACAO';
 
 export interface Profile {
   id: string;
@@ -238,6 +238,7 @@ export const estadoEntregaLabels: Record<EstadoEntrega, string> = {
   NAO_ENTREGUE: 'Não Entregue',
   PENDENTE: 'Pendente',
   CANCELADO: 'Cancelado',
+  AGUARDAR_VALIDACAO: 'Aguardar Validação',
 };
 
 export const estadoEntregaColors: Record<EstadoEntrega, string> = {
@@ -245,4 +246,5 @@ export const estadoEntregaColors: Record<EstadoEntrega, string> = {
   NAO_ENTREGUE: 'badge-falta',
   PENDENTE: 'badge-agendada',
   CANCELADO: 'badge-cancelada',
+  AGUARDAR_VALIDACAO: 'badge-remarcada',
 };
